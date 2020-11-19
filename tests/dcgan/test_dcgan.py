@@ -27,8 +27,7 @@ def test_generator_discriminator_flow():
     n_batches = 4
     batch = torch.rand(n_batches, gen.nz, 1, 1)
 
-    fake = gen.forward(batch)
-    label = dis.forward(fake)
+    label = dis.forward(gen.forward(batch))
     assert label.size() == (n_batches, 1, 1, 1)
 
 

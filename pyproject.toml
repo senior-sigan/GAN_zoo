@@ -19,6 +19,7 @@ python = "3.8.5"
 torch = "^1.7.0"
 torchvision = "^0.8.1"
 pytorch-lightning = "^1.0.7"
+pytorch-lightning-bolts = "^0.2.5"
 
 [tool.poetry.dev-dependencies]
 mypy = "^0.790"
@@ -33,3 +34,4 @@ pytest-randomly = "^3.5"
 
 jupyter = "^1.0.0"
 ipython = "^7.19.0"
+autopep8 = "^1.5.4"
