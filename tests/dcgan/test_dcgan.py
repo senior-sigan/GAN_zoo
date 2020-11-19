@@ -1,6 +1,6 @@
 import torch
 
-from gans_zoo.dcgan.network import Discriminator, Generator
+from gans_zoo.dcgan.network import Discriminator, Generator, weights_init
 
 
 def test_generator_forward():
@@ -30,3 +30,11 @@ def test_generator_discriminator_flow():
     fake = gen.forward(batch)
     label = dis.forward(fake)
     assert label.size() == (n_batches, 1, 1, 1)
+
+
+def test_weight_init():
+    gen = Generator()
+    gen.apply(weights_init)
+
+    dis = Discriminator()
+    dis.apply(weights_init)

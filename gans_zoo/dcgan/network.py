@@ -2,6 +2,26 @@ import torch
 from torch import nn
 
 
+def weights_init(m: nn.Module) -> None:
+    """
+    From the DCGAN paper, the authors specify that all model weights shall be
+    randomly initialized from a Normal distribution with mean=0, stdev=0.02.
+
+    Usage:
+    > netG = Generator()
+    > netG.apply(weights_init)
+
+    :param m: module to apply custom weight initialisation
+    :return:
+    """
+    class_name = m.__class__.__name__
+    if class_name.find('Conv') != -1:
+        nn.init.normal_(m.weight.data, 0.0, 0.02)
+    elif class_name.find('BatchNorm') != -1:
+        nn.init.normal_(m.weight.data, 1.0, 0.02)
+        nn.init.constant_(m.bias.data, 0)
+
+
 class Generator(nn.Module):
     def __init__(self, nz: int = 100, ngf: int = 64, nc: int = 3) -> None:
         """
