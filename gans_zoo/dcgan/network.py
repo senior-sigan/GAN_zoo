@@ -81,6 +81,7 @@ class Generator(nn.Module):
         :param x: Latent vector of shape (n_batch, nz, 1, 1)
         :return: Tensor for generated images of shape (n_batch, 3, 64, 64)
         """
+        x = x.view(x.size(0), x.size(1), 1, 1)
         return self.net.forward(x)
 
 
@@ -129,6 +130,6 @@ class Discriminator(nn.Module):
         x.size == (n_batches, C, H, W)
 
         :param x: batch of images
-        :return: prediction (n_batches, 1, 1, 1)
+        :return: prediction (n_batches,)
         """
-        return self.net.forward(x)
+        return self.net.forward(x).view(-1)

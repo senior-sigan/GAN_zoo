@@ -13,7 +13,7 @@ class LitDCGAN(pl.LightningModule):
     def __init__(
         self,
         learning_rate: float = 0.0002,
-        nz: int = 100,
+        latent_dim: int = 100,
         ngf: int = 64,
         ndf: int = 64,
         nc: int = 3,
@@ -22,7 +22,7 @@ class LitDCGAN(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()
 
-        self.generator = Generator(nz=nz, ngf=ngf, nc=nc)
+        self.generator = Generator(nz=latent_dim, ngf=ngf, nc=nc)
         self.generator.apply(weights_init)
 
         self.discriminator = Discriminator(ndf=ndf, nc=nc)
@@ -40,7 +40,7 @@ class LitDCGAN(pl.LightningModule):
         return self.generator.forward(x)
 
     def training_step(self, batch, batch_idx, optimizer_idx):
-        x = batch[0]
+        x = batch
 
         if optimizer_idx == 0:
             return self.generator_step(x)
@@ -91,7 +91,7 @@ class LitDCGAN(pl.LightningModule):
 
         fakes = self.generator(z)
 
-        D_output = self.discriminator(fakes).view(-1)
+        D_output = self.discriminator(fakes)
         g_loss = F.binary_cross_entropy(D_output, y)
 
         return g_loss
@@ -101,7 +101,7 @@ class LitDCGAN(pl.LightningModule):
         batch_size = x_real.size(0)
         y_real = torch.full((batch_size,), self.real_label, device=self.device)
 
-        D_output = self.discriminator(x_real).view(-1)
+        D_output = self.discriminator(x_real)
         D_real_loss = F.binary_cross_entropy(D_output, y_real)
 
         # train discriminator on fake
@@ -113,7 +113,7 @@ class LitDCGAN(pl.LightningModule):
         x_fake = self(z)
         y_fake = torch.full((batch_size,), self.fake_label, device=self.device)
 
-        D_output = self.discriminator(x_fake).view(-1)
+        D_output = self.discriminator(x_fake)
         D_fake_loss = F.binary_cross_entropy(D_output, y_fake)
 
         D_loss = D_real_loss + D_fake_loss

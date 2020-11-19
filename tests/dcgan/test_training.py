@@ -1,7 +1,8 @@
 import pytorch_lightning as pl
 import torch
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader
 
+from gans_zoo.data import FakeImagesDataset
 from gans_zoo.dcgan.trainer import LitDCGAN
 
 
@@ -23,8 +24,8 @@ def test_fit():
     model = LitDCGAN()
     trainer = pl.Trainer(max_epochs=1, fast_dev_run=True)
 
-    inputs = torch.randn(8, model.generator.nc, 64, 64)
-    train_loader = DataLoader(TensorDataset(inputs), batch_size=1)
-    val_loader = DataLoader(TensorDataset(inputs), batch_size=1)
+    shape = (model.generator.nc, 64, 64)
+    train_loader = DataLoader(FakeImagesDataset(shape), batch_size=1)
+    val_loader = DataLoader(FakeImagesDataset(shape), batch_size=1)
     trainer.fit(model, train_dataloader=train_loader,
                 val_dataloaders=val_loader)
