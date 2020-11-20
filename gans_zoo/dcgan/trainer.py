@@ -10,6 +10,14 @@ from torch.optim.optimizer import Optimizer
 from gans_zoo.dcgan.network import Discriminator, Generator, weights_init
 
 
+def norm_zero_one(t: torch.Tensor) -> torch.Tensor:
+    min_ = float(t.min())
+    max_ = float(t.max())
+    t.clamp_(min=min_, max=max_)
+    t.add_(-min_).div_(max_ - min_ + 1e-5)
+    return t
+
+
 class LitDCGAN(pl.LightningModule):
     @staticmethod
     def add_model_specific_args(
@@ -49,6 +57,7 @@ class LitDCGAN(pl.LightningModule):
         self.fake_label = 0.0
 
         self.input_size = 64
+        self.img_dim = (3, self.input_size, self.input_size)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -56,7 +65,7 @@ class LitDCGAN(pl.LightningModule):
         :param x: latent vector of size (n_batches, z_dim, 1, 1)
         :return:
         """
-        return self.generator.forward(x)
+        return norm_zero_one(self.generator.forward(x))
 
     def training_step(self, batch, batch_idx, optimizer_idx):
         x = batch
