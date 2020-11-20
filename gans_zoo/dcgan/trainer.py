@@ -138,7 +138,7 @@ class LitDCGAN(pl.LightningModule):
             *self.generator.input_shape,
             device=self.device,
         )
-        x_fake = self(z)
+        x_fake = self.generator(z)
         y_fake = torch.full((batch_size,), self.fake_label, device=self.device)
 
         D_output = self.discriminator(x_fake)
