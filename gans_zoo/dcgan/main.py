@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from argparse import ArgumentParser
 
 import pytorch_lightning as pl
 from pl_bolts.callbacks import LatentDimInterpolator, \
@@ -10,17 +10,22 @@ from gans_zoo.data import ImagesFolder
 from gans_zoo.dcgan.trainer import LitDCGAN
 
 
-@dataclass
-class Config:
-    data_dir: str = "/Volumes/Media/datasets/crop-cosplayers"
-    image_size: int = 64
-    batch_size: int = 32
-    workers: int = 1
-    epochs: int = 100
+def add_data_specific_args(parent_parser: ArgumentParser) -> ArgumentParser:
+    parser = ArgumentParser(parents=[parent_parser], add_help=False)
+    parser.add_argument('--batch-size', default=32, type=int)
+    parser.add_argument('--data-dir', type=str, required=True)
+    parser.add_argument('--workers', type=int, default=8,
+                        help='Number of Data Loader workers')
+    return parser
 
 
 def main():
-    config = Config()
+    parser = ArgumentParser()
+    parser = add_data_specific_args(parser)
+    parser = LitDCGAN.add_model_specific_args(parser)
+    parser = pl.Trainer.add_argparse_args(parser)
+    args = parser.parse_args()
+
     pl.seed_everything(42)
 
     model = LitDCGAN()
@@ -29,26 +34,22 @@ def main():
         LatentDimInterpolator(interpolate_epoch_interval=5),
     ]
 
-    trainer = pl.Trainer(
-        max_epochs=config.epochs,
-        callbacks=callbacks,
-        fast_dev_run=True,
-    )
+    trainer = pl.Trainer.from_argparse_args(args, callbacks=callbacks, )
 
     transform = transforms.Compose([
-        transforms.Resize(config.image_size),
-        transforms.CenterCrop(config.image_size),
+        transforms.Resize(model.input_size),
+        transforms.CenterCrop(model.input_size),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     ])
 
     dataset = ImagesFolder(
-        root=config.data_dir,
+        root=args.data_dir,
         transform=transform
     )
     dataloader = DataLoader(
-        dataset, batch_size=config.batch_size,
-        shuffle=True, num_workers=config.workers,
+        dataset, batch_size=args.batch_size,
+        shuffle=True, num_workers=args.workers,
     )
     trainer.fit(model, train_dataloader=dataloader)
 

@@ -1,3 +1,4 @@
+from argparse import ArgumentParser
 from typing import List, Tuple
 
 import pytorch_lightning as pl
@@ -10,6 +11,22 @@ from gans_zoo.dcgan.network import Discriminator, Generator, weights_init
 
 
 class LitDCGAN(pl.LightningModule):
+    @staticmethod
+    def add_model_specific_args(
+        parent_parser: ArgumentParser,
+    ) -> ArgumentParser:
+        parser = ArgumentParser(parents=[parent_parser], add_help=False)
+        parser.add_argument('--latent-dim', type=int, default=100)
+        parser.add_argument('--ngf', type=int, default=64,
+                            help='number of generator feature maps')
+        parser.add_argument('--ndf', type=int, default=64,
+                            help='number of discriminator feature maps')
+        parser.add_argument('--nc', type=int, default=3,
+                            help='number of colors in image')
+        parser.add_argument('--beta1', type=float, default=0.5,
+                            help='Adam\'s optimizer beta 1 parameter')
+        return parser
+
     def __init__(
         self,
         learning_rate: float = 0.0002,
@@ -30,6 +47,8 @@ class LitDCGAN(pl.LightningModule):
 
         self.real_label = 1.0
         self.fake_label = 0.0
+
+        self.input_size = 64
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
