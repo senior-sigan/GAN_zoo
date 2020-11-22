@@ -216,5 +216,5 @@ fabric.properties
 # pytorch lightning
 lightning_logs
 
-datasets
+datasets/*
 !datasets/download_pix2pix_dataset.sh
