@@ -2,10 +2,11 @@ from argparse import ArgumentParser
 
 import pytorch_lightning as pl
 from torch.utils.data.dataloader import DataLoader
-from torchvision.transforms import transforms
 
-from gans_zoo.data import ImagesFolder
+from gans_zoo.data.gan_data import ImagesFolder
 from gans_zoo.pix2pix.trainer import LitPix2Pix
+from gans_zoo.transforms.paired_transform import PairedTransform, \
+    PairedValTransform
 
 
 def add_data_specific_args(parent_parser: ArgumentParser) -> ArgumentParser:
@@ -36,44 +37,45 @@ def main():
 
     trainer = pl.Trainer.from_argparse_args(args, callbacks=callbacks)
 
-    transform_train = transforms.Compose([
-        transforms.Resize(model.input_size * args.jitter),
-        transforms.RandomCrop(model.input_size),
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomVerticalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    ])
-    transform_val = transforms.Compose([
-        transforms.Resize(model.input_size),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    ])
+    transform_train = PairedTransform(
+        crop_size=model.input_size,
+        jitter=args.jitter,
+    )
+    transform_val = PairedValTransform(
+        resize_value=model.input_size,
+    )
 
     train_ds = ImagesFolder(
         root=args.train_data_dir,
-        transform=transform_train
+        transform=transform_train,
     )
     train_loader = DataLoader(
-        train_ds, batch_size=args.batch_size,
-        shuffle=True, num_workers=args.workers,
+        train_ds,
+        batch_size=args.batch_size,
+        shuffle=True,
+        num_workers=args.workers,
     )
 
     val_dataloaders = []
     if args.val_data_dir:
         val_ds = ImagesFolder(
             root=args.val_data_dir,
-            transform=transform_val
+            transform=transform_val,
         )
         val_loader = DataLoader(
-            val_ds, batch_size=args.batch_size,
-            shuffle=True, num_workers=args.workers,
+            val_ds,
+            batch_size=args.batch_size,
+            shuffle=True,
+            num_workers=args.workers,
         )
         val_dataloaders.append(val_loader)
 
-    trainer.fit(model, train_dataloader=train_loader,
-                val_dataloaders=val_dataloaders)
+    trainer.fit(
+        model,
+        train_dataloader=train_loader,
+        val_dataloaders=val_dataloaders,
+    )
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

@@ -1,7 +1,7 @@
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 
-from gans_zoo.data import FakePairedImagesDataset
+from gans_zoo.data.paired_data import FakePairedImagesDataset
 from gans_zoo.pix2pix.trainer import LitPix2Pix
 
 

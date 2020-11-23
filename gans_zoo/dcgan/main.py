@@ -6,7 +6,7 @@ from pl_bolts.callbacks import LatentDimInterpolator, \
 from torch.utils.data.dataloader import DataLoader
 from torchvision.transforms import transforms
 
-from gans_zoo.data import ImagesFolder
+from gans_zoo.data.gan_data import ImagesFolder
 from gans_zoo.dcgan.trainer import LitDCGAN
 
 
@@ -45,14 +45,16 @@ def main():
 
     dataset = ImagesFolder(
         root=args.data_dir,
-        transform=transform
+        transform=transform,
     )
     dataloader = DataLoader(
-        dataset, batch_size=args.batch_size,
-        shuffle=True, num_workers=args.workers,
+        dataset,
+        batch_size=args.batch_size,
+        shuffle=True,
+        num_workers=args.workers,
     )
     trainer.fit(model, train_dataloader=dataloader)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

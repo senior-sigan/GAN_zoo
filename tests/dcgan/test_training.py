@@ -2,7 +2,7 @@ import pytorch_lightning as pl
 import torch
 from torch.utils.data import DataLoader
 
-from gans_zoo.data import FakeImagesDataset
+from gans_zoo.data.gan_data import FakeImagesDataset
 from gans_zoo.dcgan.trainer import LitDCGAN
 
 

@@ -1,20 +1,18 @@
 import numpy as np
 
-from gans_zoo.data import ImagesFolder
+from gans_zoo.data.gan_data import ImagesFolder
 
-
-# TODO: rewrite test to be system agnostic. Maybe download mnist...
 
 def test_images_folder_finds_all_images():
     dataset = ImagesFolder(
-        root="/Volumes/Media/datasets/anime",
+        root='/Volumes/Media/datasets/anime',
     )
     assert len(dataset) == 24753
 
 
 def test_images_folder_can_load_image():
     dataset = ImagesFolder(
-        root="/Volumes/Media/datasets/anime",
+        root='/Volumes/Media/datasets/anime',
     )
     img = dataset[0]
     assert img is not None
