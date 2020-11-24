@@ -8,14 +8,7 @@ from torch.optim import Adam
 from torch.optim.optimizer import Optimizer
 
 from gans_zoo.dcgan.network import Discriminator, Generator, weights_init
-
-
-def norm_zero_one(t: torch.Tensor) -> torch.Tensor:
-    min_ = float(t.min())
-    max_ = float(t.max())
-    t.clamp_(min=min_, max=max_)
-    t.add_(-min_).div_(max_ - min_ + 1e-5)
-    return t
+from gans_zoo.utils import norm_zero_one
 
 
 class LitDCGAN(pl.LightningModule):

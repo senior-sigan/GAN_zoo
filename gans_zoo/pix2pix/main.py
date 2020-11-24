@@ -3,6 +3,8 @@ from argparse import ArgumentParser
 import pytorch_lightning as pl
 from torch.utils.data.dataloader import DataLoader
 
+from gans_zoo.callbacks.paired_image_sampler import \
+    TensorboardPairedImageSampler
 from gans_zoo.data.gan_data import ImagesFolder
 from gans_zoo.pix2pix.trainer import LitPix2Pix
 from gans_zoo.transforms.paired_transform import PairedTransform, \
@@ -31,11 +33,6 @@ def main():
     pl.seed_everything(42)
 
     model = LitPix2Pix.from_argparse_args(args)
-
-    # TODO: add callback to draw to the tensorboard
-    callbacks = []
-
-    trainer = pl.Trainer.from_argparse_args(args, callbacks=callbacks)
 
     transform_train = PairedTransform(
         crop_size=model.input_size,
@@ -69,6 +66,12 @@ def main():
             num_workers=args.workers,
         )
         val_dataloaders.append(val_loader)
+
+    callbacks = [
+        TensorboardPairedImageSampler(num_samples=3)
+    ]
+
+    trainer = pl.Trainer.from_argparse_args(args, callbacks=callbacks)
 
     trainer.fit(
         model,
