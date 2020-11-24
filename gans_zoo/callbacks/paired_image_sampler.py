@@ -1,44 +1,48 @@
-from typing import Dict, List
+from typing import List, Tuple
 
 import pytorch_lightning as pl
 import torch
 from torch.utils.data.dataset import Dataset
 
 
-def random_sample(dataset: Dataset, num_samples: int) -> List[
-    Dict[str, torch.Tensor]
-]:
-    n = len(dataset)
-    idxs = torch.randperm(n, dtype=torch.int64)[:num_samples]
-    return [dataset[i] for i in idxs]
+def random_sample(
+    dataset: Dataset,
+    num_samples: int,
+) -> List[List[torch.Tensor]]:
+    idxs = torch.randperm(len(dataset), dtype=torch.int64)[:num_samples]
+    return [dataset[idx] for idx in idxs]
 
 
-def build_grid(samples: List[Dict[str, torch.Tensor]]) -> torch.Tensor:
+def build_grid(samples: List[List[torch.Tensor]]) -> torch.Tensor:
     # grid visualisation, so torch.cat over 2nd dim
     # img_a1 - img_b1_fake - img_b1
     # img_a2 - img_b2_fake - img_b2
     # TODO: handle one-channel images
     line = []
     for sample in samples:
-        line.append(torch.cat((sample['A'], sample['B_fake'], sample['B']), 2))
+        img = torch.cat(sample, 2)
+        line.append(img)
     return torch.cat(line, 1)
 
 
 def draw_samples(
-    samples: List[Dict[str, torch.Tensor]],
+    samples: List[List[torch.Tensor]],
     mode: str,
     trainer: pl.Trainer,
     pl_module: pl.LightningModule,
 ):
+    images = []
     for sample in samples:
-        img_a = sample['A'].to(device=pl_module.device)
+        img_a, img_b = sample
+        img_a = img_a.to(device=pl_module.device)
         with torch.no_grad():
             pl_module.eval()
             img_b_fakes = pl_module(img_a.unsqueeze(0))
-            sample['B_fake'] = img_b_fakes.squeeze(0)
+            img_b_fake = img_b_fakes.squeeze(0)
             pl_module.train()
+            images.append([img_a, img_b_fake, img_b])
 
-    grid = build_grid(samples)
+    grid = build_grid(images)
 
     str_title = f'{pl_module.__class__.__name__}_images_{mode}'
     trainer.logger.experiment.add_image(

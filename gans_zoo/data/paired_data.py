@@ -1,5 +1,5 @@
 import os
-from typing import Callable, Dict, Optional, Tuple, TypeVar, Union
+from typing import Callable, Dict, Optional, Tuple, TypeVar, Union, List
 
 import torch
 from torch.utils import data
@@ -38,15 +38,13 @@ class PairedImagesFolderDataset(data.Dataset[TData]):
         self.extensions = extensions
         self.samples = samples
 
-    def __getitem__(self, index: int) -> Dict[str, TData]:
+    def __getitem__(self, index: int) -> List[TData]:
         """
         Get a pair of images as a sample by index.
 
         Transform each image if `transform` is specified.
-        Transform should be able to apply parallel on images:
-        transformations should be equal for the A and B.
-        Pytorch transforms cannot do this.
-        So if you randomly rotate an image: rotate A and B on the same angle.
+        Random transformations should be same for the Tuple of outputs.
+        By the way, pytorch transforms cannot do this.
 
         :param index:
         :return:
@@ -58,7 +56,7 @@ class PairedImagesFolderDataset(data.Dataset[TData]):
         target_image = sample.crop((0, 0, width // 2, height))
         input_image = sample.crop((width // 2, 0, width, height))
 
-        sample = {'A': input_image, 'B': target_image}
+        sample = [input_image, target_image]
 
         if self.transform is not None:
             sample = self.transform(sample)
@@ -78,14 +76,14 @@ class FakePairedImagesDataset(data.Dataset[torch.Tensor]):
         self.shape = shape
         self.size = size
 
-    def __getitem__(self, index: int) -> Dict[str, torch.Tensor]:
+    def __getitem__(self, index: int) -> List[torch.Tensor]:
         """
         Generates a pair of random samples of the shape.
 
         :param index:
-        :return: dictionary for with A and B paired image
+        :return: tuple of A and B tensor
         """
-        return {'A': torch.randn(self.shape), 'B': torch.randn(self.shape)}
+        return [torch.randn(self.shape), torch.randn(self.shape)]
 
     def __len__(self) -> int:
         """

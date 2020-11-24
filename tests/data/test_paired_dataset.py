@@ -1,3 +1,4 @@
+from torch.utils.data.dataloader import DataLoader
 from gans_zoo.data.paired_data import PairedImagesFolderDataset
 from gans_zoo.transforms.paired_transform import PairedTransform
 
@@ -26,7 +27,26 @@ def test_paired_dataset_loads_pairs():
         root='datasets/facades/train',
         transform=transform,
     )
-    sample = dataset[0]
-    input_img = sample['A']
-    target_img = sample['B']
+    input_img, target_img = dataset[0]
     assert input_img.size() == target_img.size()
+
+
+def test_paired_dataloader():
+    transform = PairedTransform(
+        crop_size=256,
+        jitter=1.2,
+    )
+    dataset = PairedImagesFolderDataset(
+        root='datasets/facades/train',
+        transform=transform,
+    )
+    dataloader = DataLoader(
+        dataset,
+        batch_size=2,
+        shuffle=True,
+        num_workers=1,
+    )
+    batch = next(iter(dataloader))
+    img_a, img_b = batch
+    assert img_a.shape == (2, 3, 256, 256)
+    assert img_b.shape == (2, 3, 256, 256)

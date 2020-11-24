@@ -1,14 +1,11 @@
 from argparse import ArgumentParser
 
 import pytorch_lightning as pl
-from torch.utils.data.dataloader import DataLoader
-
-from gans_zoo.callbacks.paired_image_sampler import \
-    TensorboardPairedImageSampler
+from gans_zoo.callbacks.paired_image_sampler import TensorboardPairedImageSampler
 from gans_zoo.data.paired_data import PairedImagesFolderDataset
 from gans_zoo.pix2pix.trainer import LitPix2Pix
-from gans_zoo.transforms.paired_transform import PairedTransform, \
-    PairedValTransform
+from gans_zoo.transforms.paired_transform import PairedTransform, PairedValTransform
+from torch.utils.data.dataloader import DataLoader
 
 
 def add_data_specific_args(parent_parser: ArgumentParser) -> ArgumentParser:
@@ -68,7 +65,7 @@ def main():
         val_dataloaders.append(val_loader)
 
     callbacks = [
-        TensorboardPairedImageSampler(num_samples=3)
+        TensorboardPairedImageSampler(num_samples=3),
     ]
 
     trainer = pl.Trainer.from_argparse_args(args, callbacks=callbacks)

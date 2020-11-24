@@ -1,4 +1,4 @@
-from typing import Dict, TypeVar
+from typing import TypeVar, List
 
 import torch
 from torch import nn
@@ -6,6 +6,41 @@ from torchvision import transforms
 from torchvision.transforms import functional as funcs
 
 TImage = TypeVar('TImage')
+
+
+def apply_aug(sample, crop_params, flip_v, flip_h, resize_value, mean, std):
+    sample = funcs.resize(
+        img=sample,
+        size=[resize_value, resize_value],
+    )
+    sample = funcs.crop(sample, *crop_params)
+    if flip_h:
+        sample = funcs.hflip(sample)
+    if flip_v:
+        sample = funcs.vflip(sample)
+
+    sample = funcs.to_tensor(sample)
+    sample = funcs.normalize(
+        sample,
+        mean=mean,
+        std=std,
+    )
+    return sample
+
+
+def apply_val_aug(sample, resize_value, mean, std):
+    sample = funcs.resize(
+        img=sample,
+        size=[resize_value, resize_value],
+    )
+
+    sample = funcs.to_tensor(sample)
+    sample = funcs.normalize(
+        sample,
+        mean=mean,
+        std=std,
+    )
+    return sample
 
 
 class PairedTransform(nn.Module):
@@ -17,35 +52,28 @@ class PairedTransform(nn.Module):
         self.mean = [0.5, 0.5, 0.5]
         self.std = [0.5, 0.5, 0.5]
 
-    def forward(self, inputs: Dict[str, TImage]) -> Dict[str, torch.Tensor]:
-        sample = list(inputs.values())[0]
-
+    def forward(
+        self,
+        inputs: List[torch.Tensor],
+    ) -> List[torch.Tensor]:
         crop_params = transforms.RandomCrop.get_params(
-            img=sample,
+            img=inputs[0],
             output_size=(self.crop_size, self.crop_size),
         )
         flip_v = torch.rand(1) < self.flip_proba
         flip_h = torch.rand(1) < self.flip_proba
 
-        for k in inputs:
-            inputs[k] = funcs.resize(
-                img=inputs[k],
-                size=[self.resize_value, self.resize_value],
-            )
-            inputs[k] = funcs.crop(inputs[k], *crop_params)
-            if flip_h:
-                inputs[k] = funcs.hflip(inputs[k])
-            if flip_v:
-                inputs[k] = funcs.vflip(inputs[k])
-
-            inputs[k] = funcs.to_tensor(inputs[k])
-            inputs[k] = funcs.normalize(
-                inputs[k],
-                mean=self.mean,
-                std=self.std,
-            )
-
-        return inputs
+        return [
+            apply_aug(
+                sample,
+                crop_params,
+                flip_v,
+                flip_h,
+                self.resize_value,
+                self.mean,
+                self.std,
+            ) for sample in inputs
+        ]
 
 
 class PairedValTransform(nn.Module):
@@ -55,18 +83,11 @@ class PairedValTransform(nn.Module):
         self.mean = [0.5, 0.5, 0.5]
         self.std = [0.5, 0.5, 0.5]
 
-    def forward(self, inputs: Dict[str, TImage]) -> Dict[str, torch.Tensor]:
-        for k in inputs:
-            inputs[k] = funcs.resize(
-                img=inputs[k],
-                size=[self.resize_value, self.resize_value],
-            )
-
-            inputs[k] = funcs.to_tensor(inputs[k])
-            inputs[k] = funcs.normalize(
-                inputs[k],
-                mean=self.mean,
-                std=self.std,
-            )
-
-        return inputs
+    def forward(
+        self,
+        inputs: List[torch.Tensor],
+    ) -> List[torch.Tensor]:
+        return [
+            apply_val_aug(sample, self.resize_value, self.mean, self.std)
+            for sample in inputs
+        ]

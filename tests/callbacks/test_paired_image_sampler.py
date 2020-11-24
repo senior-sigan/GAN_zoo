@@ -25,16 +25,16 @@ def test_on_epoch_end():
 
 def test_build_grid():
     samples = [
-        {
-            'A': torch.full(size=(3, 4, 4), fill_value=1),
-            'B_fake': torch.full(size=(3, 4, 4), fill_value=2),
-            'B': torch.full(size=(3, 4, 4), fill_value=3),
-        },
-        {
-            'A': torch.full(size=(3, 4, 4), fill_value=4),
-            'B_fake': torch.full(size=(3, 4, 4), fill_value=5),
-            'B': torch.full(size=(3, 4, 4), fill_value=6),
-        }
+        (
+            torch.full(size=(3, 4, 4), fill_value=1),
+            torch.full(size=(3, 4, 4), fill_value=2),
+            torch.full(size=(3, 4, 4), fill_value=3),
+        ),
+        (
+            torch.full(size=(3, 4, 4), fill_value=4),
+            torch.full(size=(3, 4, 4), fill_value=5),
+            torch.full(size=(3, 4, 4), fill_value=6),
+        ),
     ]
     grid = build_grid(samples)
     assert grid.shape == (3, 4 * 2, 4 * 3)

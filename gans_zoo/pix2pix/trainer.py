@@ -78,8 +78,7 @@ class LitPix2Pix(pl.LightningModule):
         batch_idx: int,
         optimizer_idx: int,
     ):
-        input_img = batch['A'].to(self.device)
-        target_img = batch['B'].to(self.device)
+        input_img, target_img = batch
 
         fake_img = self.generator(input_img)
 
