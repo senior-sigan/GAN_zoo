@@ -5,7 +5,7 @@ from torch.utils.data.dataloader import DataLoader
 
 from gans_zoo.callbacks.paired_image_sampler import \
     TensorboardPairedImageSampler
-from gans_zoo.data.gan_data import ImagesFolder
+from gans_zoo.data.paired_data import PairedImagesFolderDataset
 from gans_zoo.pix2pix.trainer import LitPix2Pix
 from gans_zoo.transforms.paired_transform import PairedTransform, \
     PairedValTransform
@@ -42,7 +42,7 @@ def main():
         resize_value=model.input_size,
     )
 
-    train_ds = ImagesFolder(
+    train_ds = PairedImagesFolderDataset(
         root=args.train_data_dir,
         transform=transform_train,
     )
@@ -55,7 +55,7 @@ def main():
 
     val_dataloaders = []
     if args.val_data_dir:
-        val_ds = ImagesFolder(
+        val_ds = PairedImagesFolderDataset(
             root=args.val_data_dir,
             transform=transform_val,
         )

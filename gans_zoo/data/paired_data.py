@@ -14,7 +14,8 @@ TData = Union[TImage, TTensor]
 
 class PairedImagesFolderDataset(data.Dataset[TData]):
     def __init__(
-        self, root: str,
+        self,
+        root: str,
         loader: Callable[[str], TImage] = default_loader,
         extensions: Optional[Tuple[str, ...]] = None,
         transform: Optional[Callable[[TImage], TTensor]] = None,
