@@ -48,6 +48,7 @@ class UpScale(nn.Module):
         self,
         in_channels: int,
         out_channels: int,
+        normalize: bool = True,
         dropout: float = 0.0,
     ) -> None:
         super().__init__()
@@ -60,16 +61,23 @@ class UpScale(nn.Module):
                 padding=1,
                 bias=False,
             ),
-            nn.InstanceNorm2d(out_channels),
-            nn.ReLU(inplace=True),
         ]
+        if normalize:
+            layers.append(nn.InstanceNorm2d(out_channels))
+        layers.append(nn.ReLU(inplace=True))
         if dropout:
             layers.append(nn.Dropout(dropout))
 
         self.model = nn.Sequential(*layers)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.model(x)
+    def forward(
+        self,
+        x: torch.Tensor,
+        skip_input: torch.Tensor,
+    ) -> torch.Tensor:
+        x = self.model(x)
+        x = torch.cat((x, skip_input), 1)
+        return x
 
 
 class Generator(nn.Module):
@@ -89,26 +97,23 @@ class Generator(nn.Module):
         super().__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
-        self.down_stack = [
-            DownScale(in_channels, 64, normalize=False),
-            DownScale(64, 128),
-            DownScale(128, 256),
-            DownScale(256, 512, dropout=0.5),
-            DownScale(512, 512, dropout=0.5),
-            DownScale(512, 512, dropout=0.5),
-            DownScale(512, 512, dropout=0.5),
-            DownScale(512, 512, normalize=False, dropout=0.5),
-        ]
 
-        self.up_stack = [
-            UpScale(512, 512, dropout=0.5),
-            UpScale(1024, 512, dropout=0.5),
-            UpScale(1024, 512, dropout=0.5),
-            UpScale(1024, 512, dropout=0.5),
-            UpScale(1024, 256),
-            UpScale(512, 128),
-            UpScale(256, 64),
-        ]
+        self.down1 = DownScale(in_channels, 64, normalize=False)
+        self.down2 = DownScale(64, 128)
+        self.down3 = DownScale(128, 256)
+        self.down4 = DownScale(256, 512, dropout=0.5)
+        self.down5 = DownScale(512, 512, dropout=0.5)
+        self.down6 = DownScale(512, 512, dropout=0.5)
+        self.down7 = DownScale(512, 512, dropout=0.5)
+        self.down8 = DownScale(512, 512, normalize=False, dropout=0.5)
+
+        self.up1 = UpScale(512, 512, dropout=0.5)
+        self.up2 = UpScale(1024, 512, dropout=0.5)
+        self.up3 = UpScale(1024, 512, dropout=0.5)
+        self.up4 = UpScale(1024, 512, dropout=0.5)
+        self.up5 = UpScale(1024, 256)
+        self.up6 = UpScale(512, 128)
+        self.up7 = UpScale(256, 64)
 
         self.final = nn.Sequential(
             nn.Upsample(scale_factor=2),
@@ -118,20 +123,23 @@ class Generator(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        skips = []
-        for down in self.down_stack:
-            x = down(x)
-            skips.append(x)
+        d1 = self.down1(x)
+        d2 = self.down2(d1)
+        d3 = self.down3(d2)
+        d4 = self.down4(d3)
+        d5 = self.down5(d4)
+        d6 = self.down6(d5)
+        d7 = self.down7(d6)
+        d8 = self.down8(d7)
+        u1 = self.up1(d8, d7)
+        u2 = self.up2(u1, d6)
+        u3 = self.up3(u2, d5)
+        u4 = self.up4(u3, d4)
+        u5 = self.up5(u4, d3)
+        u6 = self.up6(u5, d2)
+        u7 = self.up7(u6, d1)
 
-        # reverse array order and skip last input,
-        # because we don't need to concat same outputs
-        skips = reversed(skips[:-1])
-
-        for up, skip in zip(self.up_stack, skips):
-            x = up(x)
-            x = torch.cat((x, skip), 1)
-
-        return self.final(x)
+        return self.final(u7)
 
 
 class DiscriminatorBlock(nn.Module):

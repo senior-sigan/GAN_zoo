@@ -12,5 +12,8 @@ def test_fit():
     shape = (model.generator.out_channels, 256, 256)
     train_loader = DataLoader(FakePairedImagesDataset(shape), batch_size=1)
     val_loader = DataLoader(FakePairedImagesDataset(shape), batch_size=1)
-    trainer.fit(model, train_dataloader=train_loader,
-                val_dataloaders=val_loader)
+    trainer.fit(
+        model,
+        train_dataloader=train_loader,
+        val_dataloaders=val_loader,
+    )

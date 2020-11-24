@@ -31,20 +31,20 @@ def test_down_scale():
 
 def test_up_scale():
     batch_size = 4
-    inputs = torch.randn(size=(batch_size, 8, 16, 16))
-    out_channels = 16
     layer = UpScale(
-        in_channels=inputs.shape[1],
-        out_channels=out_channels,
-        dropout=0.5
+        in_channels=4,
+        out_channels=8,
+        dropout=0.5,
     )
+    inputs = torch.randn(size=(batch_size, 4, 16, 16))
+    skips = torch.randn(size=(batch_size, 8, 32, 32))
 
-    output = layer.forward(inputs)
+    output = layer.forward(inputs, skips)
     assert output.size() == (
-        inputs.shape[0],
-        out_channels,
-        inputs.shape[2] * 2,
-        inputs.shape[3] * 2,
+        batch_size,
+        4 * 2 + 8,
+        32,
+        32,
     )
 
 
