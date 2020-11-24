@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import Callable, List, Optional
 
 import pytorch_lightning as pl
 import torch
@@ -30,6 +30,7 @@ def draw_samples(
     mode: str,
     trainer: pl.Trainer,
     pl_module: pl.LightningModule,
+    normalize: Callable,
 ):
     images = []
     for sample in samples:
@@ -40,7 +41,9 @@ def draw_samples(
             img_b_fakes = pl_module(img_a.unsqueeze(0))
             img_b_fake = img_b_fakes.squeeze(0)
             pl_module.train()
-            images.append([img_a, img_b_fake, img_b])
+            imgs = [img_a, img_b_fake, img_b]
+            imgs = [normalize(img.detach().cpu()) for img in imgs]
+            images.append(imgs)
 
     grid = build_grid(images)
 
@@ -52,8 +55,16 @@ def draw_samples(
     )
 
 
+def dummy_normalize(image):
+    return image
+
+
 class TensorboardPairedImageSampler(pl.Callback):
-    def __init__(self, num_samples: int = 3) -> None:
+    def __init__(
+        self,
+        num_samples: int = 3,
+        normalize: Optional[Callable] = None,
+    ) -> None:
         """
         Generates images for paired dataset and logs to tensorboard.
 
@@ -63,6 +74,9 @@ class TensorboardPairedImageSampler(pl.Callback):
         """
         super().__init__()
         self.num_samples = num_samples
+        self.normalize = normalize
+        if self.normalize is None:
+            self.normalize = dummy_normalize
 
     def on_epoch_end(
         self,
@@ -82,4 +96,4 @@ class TensorboardPairedImageSampler(pl.Callback):
 
         for mode, dataset in datasets.items():
             samples = random_sample(dataset, self.num_samples)
-            draw_samples(samples, mode, trainer, pl_module)
+            draw_samples(samples, mode, trainer, pl_module, self.normalize)

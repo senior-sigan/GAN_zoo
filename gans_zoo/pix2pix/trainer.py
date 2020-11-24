@@ -1,5 +1,4 @@
 from argparse import ArgumentParser, Namespace
-import pdb
 from typing import Dict, List, Tuple, Union
 
 import pytorch_lightning as pl
@@ -24,9 +23,9 @@ class LitPix2Pix(pl.LightningModule):
         parser.add_argument('--out_channels', type=int, default=3,
                             help='number of colors in the output image')
         parser.add_argument('--beta-1', type=float, default=0.5,
-                            help='Adam\'s optimizer beta_1 parameter')
+                            help='Adam\'s optimizer beta1 parameter')
         parser.add_argument('--beta-2', type=float, default=0.999,
-                            help='Adam\'s optimizer beta_2 parameter')
+                            help='Adam\'s optimizer beta2 parameter')
         parser.add_argument('--lr', type=float, default=0.0002,
                             help='learning rate')
         parser.add_argument('--lambda-pixel', type=float, default=100,
@@ -44,8 +43,8 @@ class LitPix2Pix(pl.LightningModule):
         in_channels: int = 3,
         out_channels: int = 3,
         learning_rate: float = 0.0002,
-        beta_1: float = 0.5,
-        beta_2: float = 0.999,
+        beta1: float = 0.5,
+        beta2: float = 0.999,
         lambda_pixel: float = 100,
     ):
         super().__init__()
@@ -75,7 +74,7 @@ class LitPix2Pix(pl.LightningModule):
         :param x: latent vector of size (n_batches, z_dim, 1, 1)
         :return:
         """
-        return norm_zero_one(self.generator.forward(x))
+        return self.generator(x)
 
     def training_step(
         self,
@@ -97,18 +96,18 @@ class LitPix2Pix(pl.LightningModule):
 
     def configure_optimizers(self) -> Tuple[List[Optimizer], List]:
         lr = self.hparams.learning_rate
-        beta_1 = self.hparams.beta_1
-        beta_2 = self.hparams.beta_2
+        beta1 = self.hparams.beta1
+        beta2 = self.hparams.beta2
 
         opt_g = Adam(
             self.generator.parameters(),
             lr=lr,
-            betas=(beta_1, beta_2),
+            betas=(beta1, beta2),
         )
         opt_d = Adam(
             self.discriminator.parameters(),
             lr=lr,
-            betas=(beta_1, beta_2),
+            betas=(beta1, beta2),
         )
 
         return [opt_g, opt_d], []

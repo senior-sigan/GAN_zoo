@@ -1,4 +1,5 @@
 from argparse import ArgumentParser
+from gans_zoo.utils import norm_zero_one
 
 import pytorch_lightning as pl
 from gans_zoo.callbacks.paired_image_sampler import TensorboardPairedImageSampler
@@ -65,7 +66,7 @@ def main():
         val_dataloaders.append(val_loader)
 
     callbacks = [
-        TensorboardPairedImageSampler(num_samples=3),
+        TensorboardPairedImageSampler(num_samples=3, normalize=norm_zero_one),
     ]
 
     trainer = pl.Trainer.from_argparse_args(args, callbacks=callbacks)
