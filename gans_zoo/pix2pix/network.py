@@ -109,7 +109,6 @@ class Generator(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         skips = []
-        print(x.shape)
         for down in self.down_stack:
             x = down(x)
             skips.append(x)

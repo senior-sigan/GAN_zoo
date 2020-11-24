@@ -31,10 +31,10 @@ def draw_samples(
     pl_module: pl.LightningModule,
 ):
     for sample in samples:
-        img_a = sample['A']
+        img_a = sample['A'].to(device=pl_module.device)
         with torch.no_grad():
             pl_module.eval()
-            img_b_fakes = pl_module.forward(img_a.unsqueeze(0))
+            img_b_fakes = pl_module(img_a.unsqueeze(0))
             sample['B_fake'] = img_b_fakes.squeeze(0)
             pl_module.train()
 

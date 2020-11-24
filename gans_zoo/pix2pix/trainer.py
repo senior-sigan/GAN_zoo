@@ -62,7 +62,7 @@ class LitPix2Pix(pl.LightningModule):
 
         self.patch = Discriminator.patch_size(input_size, input_size)
         self.input_size = input_size
-        self.img_dim = (3, self.input_size, self.input_size)
+        self.img_dim = (in_channels, self.input_size, self.input_size)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
