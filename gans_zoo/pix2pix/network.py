@@ -4,19 +4,23 @@ import torch
 from torch import nn
 
 
-def weights_init(m: nn.Module) -> None:
-    classname = m.__class__.__name__
-    if classname.find("Conv") != -1:
-        torch.nn.init.normal_(m.weight.data, 0.0, 0.02)
-    elif classname.find("BatchNorm2d") != -1:
-        torch.nn.init.normal_(m.weight.data, 1.0, 0.02)
-        torch.nn.init.constant_(m.bias.data, 0.0)
+def weights_init(layer: nn.Module) -> None:
+    classname = layer.__class__.__name__
+    if classname.find('Conv') != -1:
+        torch.nn.init.normal_(layer.weight.data, 0.0, 0.02)
+    elif classname.find('BatchNorm2d') != -1:
+        torch.nn.init.normal_(layer.weight.data, 1.0, 0.02)
+        torch.nn.init.constant_(layer.bias.data, 0.0)
 
 
 class DownScale(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int,
-                 normalize: bool = True,
-                 dropout: float = 0.0) -> None:
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        normalize: bool = True,
+        dropout: float = 0.0,
+    ) -> None:
         super().__init__()
         layers = [
             nn.Conv2d(
@@ -40,8 +44,12 @@ class DownScale(nn.Module):
 
 
 class UpScale(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int,
-                 dropout: float = 0.0) -> None:
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        dropout: float = 0.0,
+    ) -> None:
         super().__init__()
         layers = [
             nn.ConvTranspose2d(
@@ -67,7 +75,9 @@ class UpScale(nn.Module):
 class Generator(nn.Module):
     def __init__(self, in_channels=3, out_channels=3):
         """
-        UNet-like model. Do pix2pix transformation.
+        UNet-like Generator model.
+
+        Do pix2pix transformation.
         Input and output have same shape.
         Minimum input shape is 256x256.
         Model could be trained on large images without modifications
@@ -166,6 +176,7 @@ class Discriminator(nn.Module):
     ):
         """
         Patch-Discriminator.
+
         Returns BSx1x16x16 output (not BSx1 like usual Discriminator)
 
         :param in_channels: for color image 3
@@ -185,7 +196,7 @@ class Discriminator(nn.Module):
     def forward(
         self,
         input_: torch.Tensor,
-        target: torch.Tensor
+        target: torch.Tensor,
     ) -> torch.Tensor:
         x = torch.cat((input_, target), 1)
         return self.model(x)

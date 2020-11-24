@@ -1,4 +1,5 @@
 from argparse import ArgumentParser, Namespace
+import pdb
 from typing import Dict, List, Tuple, Union
 
 import pytorch_lightning as pl
@@ -50,11 +51,15 @@ class LitPix2Pix(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()
 
-        self.generator = Generator(in_channels=in_channels,
-                                   out_channels=out_channels)
+        self.generator = Generator(
+            in_channels=in_channels,
+            out_channels=out_channels,
+        )
         self.generator.apply(weights_init)
 
-        self.discriminator = Discriminator(in_channels=in_channels)
+        self.discriminator = Discriminator(
+            in_channels=in_channels,
+        )
         self.discriminator.apply(weights_init)
 
         self.real_label = 1.0
@@ -79,7 +84,6 @@ class LitPix2Pix(pl.LightningModule):
         optimizer_idx: int,
     ):
         input_img, target_img = batch
-
         fake_img = self.generator(input_img)
 
         if optimizer_idx == 0:
