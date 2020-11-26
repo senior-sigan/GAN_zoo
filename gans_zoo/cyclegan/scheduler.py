@@ -20,7 +20,7 @@ class LinearLRCallback:
             If continue training it should be the starting epoch.
         :param decay_start_epoch: epoch from which to start lr decay
         """
-        if (n_epochs - decay_start_epoch) > 0:
+        if (n_epochs - decay_start_epoch) <= 0:
             msg = 'Decay must start before the training session ends' + \
                   ': n_epochs={0} decay_start_epoch={1}!'
             raise AssertionError(msg.format(n_epochs, decay_start_epoch))

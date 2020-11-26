@@ -6,7 +6,7 @@ from gans_zoo.data.unpaired_data import FakeUnpairedImagesDataset
 
 
 def test_fit():
-    model = LitCycleGAN()
+    model = LitCycleGAN(decay_start_epoch=0)
     trainer = pl.Trainer(max_epochs=1, fast_dev_run=True)
 
     train_loader = DataLoader(FakeUnpairedImagesDataset(model.img_dim),
