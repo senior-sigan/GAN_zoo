@@ -1,9 +1,16 @@
+import os
+
+import pytest
 from torch.utils.data.dataloader import DataLoader
+
 from gans_zoo.data.paired_data import PairedImagesFolderDataset
 from gans_zoo.transforms.paired_transform import PairedTransform
 
 
 def test_paired_dataset_find_all_images():
+    if not os.path.exists('datasets/facades'):
+        pytest.skip('Dataset does not exist "datasets/facades/"')
+
     dataset = PairedImagesFolderDataset(
         root='datasets/facades/train',
     )
@@ -19,6 +26,9 @@ def test_paired_dataset_find_all_images():
 
 
 def test_paired_dataset_loads_pairs():
+    if not os.path.exists('datasets/facades'):
+        pytest.skip('Dataset does not exist "datasets/facades/"')
+
     transform = PairedTransform(
         crop_size=256,
         jitter=1.2,
@@ -32,6 +42,9 @@ def test_paired_dataset_loads_pairs():
 
 
 def test_paired_dataloader():
+    if not os.path.exists('datasets/facades'):
+        pytest.skip('Dataset does not exist "datasets/facades/"')
+
     transform = PairedTransform(
         crop_size=256,
         jitter=1.2,
