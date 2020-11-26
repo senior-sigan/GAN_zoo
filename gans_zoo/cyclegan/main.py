@@ -35,7 +35,7 @@ def main():
     model = LitCycleGAN.from_argparse_args(args)
 
     train_transform = transforms.Compose([
-        transforms.Resize(model.input_size * args.jitter),
+        transforms.Resize(int(model.input_size * args.jitter)),
         transforms.RandomCrop(model.input_size),
         transforms.RandomHorizontalFlip(),
         transforms.RandomVerticalFlip(),
