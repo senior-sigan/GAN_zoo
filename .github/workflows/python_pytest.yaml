@@ -19,16 +19,16 @@ jobs:
           curl -sSL \
             "https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py" | python
       - name: Set up cache
-          uses: actions/cache@v2
-          with:
-            path: .venv
-            key: venv-${{ matrix.python-version }}-${{ hashFiles('poetry.lock') }}
+        uses: actions/cache@v2
+        with:
+          path: .venv
+          key: venv-${{ matrix.python-version }}-${{ hashFiles('poetry.lock') }}
       - name: Install dependencies
-          run: |
-            source "$HOME/.poetry/env"
-            poetry config virtualenvs.in-project true
-            poetry install
+        run: |
+          source "$HOME/.poetry/env"
+          poetry config virtualenvs.in-project true
+          poetry install
       - name: Run checks
-          run: |
-            source "$HOME/.poetry/env"
-            poetry run pytest
+        run: |
+          source "$HOME/.poetry/env"
+          poetry run pytest
