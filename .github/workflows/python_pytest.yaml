@@ -5,7 +5,9 @@ on: [push, pull_request, workflow_dispatch]
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    strategy:
+      matrix:
+        python-version: [ 3.8 ]
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python 3.8
@@ -13,11 +15,9 @@ jobs:
         with:
           python-version: 3.8
       - name: Install poetry
-          run: |
-            curl -sSL \
-              "https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py" | python
-            # Adding `poetry` to `$PATH`:
-            echo "$HOME/.poetry/bin" >> $GITHUB_PATH
+        run: |
+          curl -sSL \
+            "https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py" | python
       - name: Set up cache
           uses: actions/cache@v2
           with:
@@ -25,8 +25,10 @@ jobs:
             key: venv-${{ matrix.python-version }}-${{ hashFiles('poetry.lock') }}
       - name: Install dependencies
           run: |
+            source "$HOME/.poetry/env"
             poetry config virtualenvs.in-project true
             poetry install
       - name: Run checks
           run: |
-            make unit
+            source "$HOME/.poetry/env"
+            poetry run pytest
