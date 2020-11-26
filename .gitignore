@@ -218,3 +218,4 @@ lightning_logs
 
 datasets/*
 !datasets/download_pix2pix_dataset.sh
+!datasets/download_cyclegan_dataset.sh
