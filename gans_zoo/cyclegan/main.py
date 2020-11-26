@@ -50,8 +50,8 @@ def main():
     ])
 
     train_ds = UnpairedImagesFolderDataset(
-        root_a=os.path.join(args.train_dir, 'a'),
-        root_b=os.path.join(args.train_dir, 'b'),
+        root_a=os.path.join(args.train_data_dir, 'a'),
+        root_b=os.path.join(args.train_data_dir, 'b'),
         transform=train_transform,
     )
     train_loader = DataLoader(
