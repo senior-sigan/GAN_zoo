@@ -9,7 +9,6 @@ from torch.optim import Adam
 from torch.optim.optimizer import Optimizer
 
 from gans_zoo.pix2pix.network import Discriminator, Generator, weights_init
-from gans_zoo.utils import norm_zero_one
 
 
 class LitPix2Pix(pl.LightningModule):
@@ -22,9 +21,9 @@ class LitPix2Pix(pl.LightningModule):
                             help='number of colors in the input image')
         parser.add_argument('--out_channels', type=int, default=3,
                             help='number of colors in the output image')
-        parser.add_argument('--beta-1', type=float, default=0.5,
+        parser.add_argument('--beta1', type=float, default=0.5,
                             help='Adam\'s optimizer beta1 parameter')
-        parser.add_argument('--beta-2', type=float, default=0.999,
+        parser.add_argument('--beta2', type=float, default=0.999,
                             help='Adam\'s optimizer beta2 parameter')
         parser.add_argument('--lr', type=float, default=0.0002,
                             help='learning rate')

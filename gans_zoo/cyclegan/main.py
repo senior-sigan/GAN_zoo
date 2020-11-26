@@ -1,14 +1,13 @@
+import os
 from argparse import ArgumentParser
 
 import pytorch_lightning as pl
 from torch.utils.data.dataloader import DataLoader
+from torchvision import transforms
 
-from gans_zoo.callbacks.paired_image_sampler import \
-    TensorboardPairedImageSampler
-from gans_zoo.data.paired_data import PairedImagesFolderDataset
-from gans_zoo.pix2pix.trainer import LitPix2Pix
-from gans_zoo.transforms.paired_transform import PairedTransform, \
-    PairedValTransform
+from gans_zoo.callbacks.cyclegan_tensorboard import TensorboardCycleGAN
+from gans_zoo.cyclegan.trainer import LitCycleGAN
+from gans_zoo.data.unpaired_data import UnpairedImagesFolderDataset
 from gans_zoo.utils import norm_zero_one
 
 
@@ -27,25 +26,33 @@ def add_data_specific_args(parent_parser: ArgumentParser) -> ArgumentParser:
 def main():
     parser = ArgumentParser()
     parser = add_data_specific_args(parser)
-    parser = LitPix2Pix.add_model_specific_args(parser)
+    parser = LitCycleGAN.add_model_specific_args(parser)
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
 
     pl.seed_everything(42)
 
-    model = LitPix2Pix.from_argparse_args(args)
+    model = LitCycleGAN.from_argparse_args(args)
 
-    transform_train = PairedTransform(
-        crop_size=model.input_size,
-        jitter=args.jitter,
-    )
-    transform_val = PairedValTransform(
-        resize_value=model.input_size,
-    )
+    train_transform = transforms.Compose([
+        transforms.Resize(model.input_size * args.jitter),
+        transforms.RandomCrop(model.input_size),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomVerticalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+    ])
+    val_transform = transforms.Compose([
+        transforms.Resize(model.input_size),
+        transforms.CenterCrop(model.input_size),
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+    ])
 
-    train_ds = PairedImagesFolderDataset(
-        root=args.train_data_dir,
-        transform=transform_train,
+    train_ds = UnpairedImagesFolderDataset(
+        root_a=os.path.join(args.train_dir, 'a'),
+        root_b=os.path.join(args.train_dir, 'b'),
+        transform=train_transform,
     )
     train_loader = DataLoader(
         train_ds,
@@ -56,9 +63,10 @@ def main():
 
     val_dataloaders = []
     if args.val_data_dir:
-        val_ds = PairedImagesFolderDataset(
-            root=args.val_data_dir,
-            transform=transform_val,
+        val_ds = UnpairedImagesFolderDataset(
+            root_a=os.path.join(args.val_data_dir, 'a'),
+            root_b=os.path.join(args.val_data_dir, 'b'),
+            transform=val_transform,
         )
         val_loader = DataLoader(
             val_ds,
@@ -69,7 +77,7 @@ def main():
         val_dataloaders.append(val_loader)
 
     callbacks = [
-        TensorboardPairedImageSampler(num_samples=3, normalize=norm_zero_one),
+        TensorboardCycleGAN(num_samples=3, normalize=norm_zero_one),
     ]
 
     trainer = pl.Trainer.from_argparse_args(args, callbacks=callbacks)

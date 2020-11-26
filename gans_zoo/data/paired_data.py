@@ -1,5 +1,5 @@
 import os
-from typing import Callable, Dict, Optional, Tuple, TypeVar, Union, List
+from typing import Callable, List, Optional, Tuple, TypeVar, Union
 
 import torch
 from torch.utils import data
