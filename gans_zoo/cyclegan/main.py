@@ -14,8 +14,7 @@ from gans_zoo.utils import norm_zero_one
 def add_data_specific_args(parent_parser: ArgumentParser) -> ArgumentParser:
     parser = ArgumentParser(parents=[parent_parser], add_help=False)
     parser.add_argument('--batch-size', default=32, type=int)
-    parser.add_argument('--train-data-dir', type=str, required=True)
-    parser.add_argument('--val-data-dir', type=str)
+    parser.add_argument('--data-dir', type=str, required=True)
     parser.add_argument('--workers', type=int, default=8,
                         help='Number of Data Loader workers')
     parser.add_argument('--jitter', type=float, default=1.2,
@@ -50,8 +49,8 @@ def main():
     ])
 
     train_ds = UnpairedImagesFolderDataset(
-        root_a=os.path.join(args.train_data_dir, 'a'),
-        root_b=os.path.join(args.train_data_dir, 'b'),
+        root_a=os.path.join(args.data_dir, 'trainA'),
+        root_b=os.path.join(args.data_dir, 'trainB'),
         transform=train_transform,
     )
     train_loader = DataLoader(
@@ -62,10 +61,12 @@ def main():
     )
 
     val_dataloaders = []
-    if args.val_data_dir:
+    test_a_path = os.path.join(args.data_dir, 'testA')
+    test_b_path = os.path.join(args.data_dir, 'testB')
+    if os.path.exists(test_a_path) and os.path.exists(test_b_path):
         val_ds = UnpairedImagesFolderDataset(
-            root_a=os.path.join(args.val_data_dir, 'a'),
-            root_b=os.path.join(args.val_data_dir, 'b'),
+            root_a=test_a_path,
+            root_b=test_b_path,
             transform=val_transform,
         )
         val_loader = DataLoader(
