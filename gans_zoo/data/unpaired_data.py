@@ -23,9 +23,6 @@ class UnpairedImagesFolderDataset(data.Dataset[TData]):
         """
         Unpaired dataset from two folders.
 
-        Warning! The dataset size is equal to the smallest dataset's size.
-        Use IterDataset instead if you have different sized datasets.
-
         :param root_a:
         :param root_b:
         :param loader:
@@ -42,7 +39,9 @@ class UnpairedImagesFolderDataset(data.Dataset[TData]):
         :param index:
         :return:
         """
-        return self.dataset_a[index], self.dataset_b[index]
+        idx_a = index % len(self.dataset_a)
+        idx_b = index % len(self.dataset_b)
+        return self.dataset_a[idx_a], self.dataset_b[idx_b]
 
     def __len__(self) -> int:
         """
@@ -50,7 +49,7 @@ class UnpairedImagesFolderDataset(data.Dataset[TData]):
 
         :return:
         """
-        return min(len(self.dataset_a), len(self.dataset_b))
+        return max(len(self.dataset_a), len(self.dataset_b))
 
 
 class FakeUnpairedImagesDataset(data.Dataset[torch.Tensor]):
