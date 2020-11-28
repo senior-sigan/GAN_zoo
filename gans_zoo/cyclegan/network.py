@@ -6,9 +6,9 @@ from torch import nn
 
 
 def get_norm_layer(name: str) -> Tuple[bool, Optional[Callable]]:
-    if name == 'batch_norm':
+    if name == 'batch':
         return False, nn.BatchNorm2d
-    elif name == 'instance_norm':
+    elif name == 'instance':
         return True, nn.InstanceNorm2d
     else:
         return True, None
@@ -252,7 +252,7 @@ class Discriminator(nn.Module):
     def __init__(
         self,
         in_channels=3,
-        norm_layer: Optional[str] = 'batch_norm',
+        norm_layer: Optional[str] = 'batch',
         ngf: int = 64
     ):
         """
@@ -261,7 +261,7 @@ class Discriminator(nn.Module):
         Returns BSx1x16x16 output (not BSx1 like usual Discriminator)
 
         :param in_channels: for color image 3
-        :param norm_layer: None, instance_norm, batch_norm
+        :param norm_layer: None, instance, batch
         :param ngf: number of generator filters. By default is 64
         """
         super().__init__()
@@ -373,7 +373,7 @@ class ResnetGenerator(nn.Module):
         in_channels: int = 3,
         out_channels: int = 3,
         ngf: int = 64,
-        norm_layer: str = 'batch_norm',
+        norm_layer: str = 'batch',
         use_dropout: bool = False,
         n_blocks: int = 6,
         padding_type: str = 'reflect',
@@ -385,7 +385,7 @@ class ResnetGenerator(nn.Module):
         :param out_channels: the number of channels in output images
         :param ngf: the number of filters in the last conv layer
         :param norm_layer: the name of normalization layer:
-            batch_norm | instance_norm
+            batch | instance
         :param use_dropout: if use dropout layers
         :param n_blocks: the number of ResNet blocks
         :param padding_type: the name of padding layer in conv layers:

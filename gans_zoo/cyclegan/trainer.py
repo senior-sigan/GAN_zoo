@@ -38,6 +38,9 @@ class LitCycleGAN(pl.LightningModule):
                             help='epoch from which to start lr decay')
         parser.add_argument('--generator', type=str, default='resnet',
                             choices=['unet', 'resnet'], help='Generator type')
+        parser.add_argument('--norm', type=str, default='instance',
+                            choices=['instance', 'batch'],
+                            help='type of normalization')
         return parser
 
     @classmethod
@@ -56,6 +59,7 @@ class LitCycleGAN(pl.LightningModule):
         lambda_identity: float = 10.0,
         lambda_cycle: float = 5.0,
         decay_start_epoch: int = 100,
+        norm: str = 'instance',
         generator: str = 'resnet',
     ):
         super().__init__()
@@ -74,19 +78,23 @@ class LitCycleGAN(pl.LightningModule):
             self.generator_ab = ResnetGenerator(
                 in_channels=in_channels,
                 out_channels=out_channels,
+                norm_layer=norm,
             )
             self.generator_ba = ResnetGenerator(
                 in_channels=in_channels,
                 out_channels=out_channels,
+                norm_layer=norm,
             )
         else:
             raise RuntimeError('Unknown generator {0}'.format(generator))
 
         self.discriminator_a = Discriminator(
             in_channels=in_channels,
+            norm_layer=norm,
         )
         self.discriminator_b = Discriminator(
             in_channels=in_channels,
+            norm_layer=norm,
         )
         self.generator_ab.apply(WeightsInit())
         self.generator_ba.apply(WeightsInit())

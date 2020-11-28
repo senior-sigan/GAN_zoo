@@ -15,10 +15,14 @@ def add_data_specific_args(parent_parser: ArgumentParser) -> ArgumentParser:
     parser = ArgumentParser(parents=[parent_parser], add_help=False)
     parser.add_argument('--batch-size', default=32, type=int)
     parser.add_argument('--data-dir', type=str, required=True)
-    parser.add_argument('--workers', type=int, default=8,
-                        help='Number of Data Loader workers')
-    parser.add_argument('--jitter', type=float, default=1.2,
-                        help='Jitter for random resize: input_size * jitter')
+    parser.add_argument(
+        '--workers', type=int, default=8,
+        help='Number of Data Loader workers',
+    )
+    parser.add_argument(
+        '--load_size', type=int, default=286,
+        help='scale loaded images and then crop to a smaller size',
+    )
     return parser
 
 
@@ -34,7 +38,7 @@ def main():
     model = LitCycleGAN.from_argparse_args(args)
 
     train_transform = transforms.Compose([
-        transforms.Resize(int(model.input_size * args.jitter)),
+        transforms.Resize(model.load_size),
         transforms.RandomCrop(model.input_size),
         transforms.RandomHorizontalFlip(),
         transforms.RandomVerticalFlip(),
