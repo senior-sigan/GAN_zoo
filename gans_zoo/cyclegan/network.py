@@ -1,4 +1,3 @@
-import functools
 from typing import Optional, Tuple
 
 import torch
@@ -335,36 +334,45 @@ class ResnetGenerator(nn.Module):
 
     def __init__(
         self,
-        input_nc,
-        output_nc,
-        ngf=64,
-        norm_layer=nn.BatchNorm2d,
-        use_dropout=False,
-        n_blocks=6,
-        padding_type='reflect',
-    ):
+        in_channels: int = 3,
+        out_channels: int = 3,
+        ngf: int = 64,
+        norm_layer_name: str = 'batch_norm',
+        use_dropout: bool = False,
+        n_blocks: int = 6,
+        padding_type: str = 'reflect',
+    ) -> None:
         """
         Construct a Resnet-based generator.
 
-        :param input_nc: the number of channels in input images
-        :param output_nc: the number of channels in output images
+        :param in_channels: the number of channels in input images
+        :param out_channels: the number of channels in output images
         :param ngf: the number of filters in the last conv layer
-        :param norm_layer: normalization layer
+        :param norm_layer_name: the name of normalization layer:
+            batch_norm | instance_norm
         :param use_dropout: if use dropout layers
         :param n_blocks: the number of ResNet blocks
         :param padding_type: the name of padding layer in conv layers:
             reflect | replicate | zero
         """
         assert (n_blocks >= 0)
+        assert (in_channels > 0)
+        assert (out_channels > 0)
         super().__init__()
-        if type(norm_layer) == functools.partial:
-            use_bias = norm_layer.func == nn.InstanceNorm2d
+
+        if norm_layer_name == 'batch_norm':
+            norm_layer = nn.BatchNorm2d
+            use_bias = False
+        elif norm_layer_name == 'instance_norm':
+            norm_layer = nn.InstanceNorm2d
+            use_bias = True
         else:
-            use_bias = norm_layer == nn.InstanceNorm2d
+            raise RuntimeError(
+                'Unknown norm_layer_name {0}'.format(norm_layer_name))
 
         model = []
         model += [conv_norm_relu_block(
-            in_channels=input_nc,
+            in_channels=in_channels,
             out_channels=ngf,
             kernel_size=7,
             stride=1,
@@ -408,7 +416,7 @@ class ResnetGenerator(nn.Module):
         model += [
             nn.Conv2d(
                 ngf,
-                output_nc,
+                out_channels,
                 kernel_size=7,
                 padding=3,
                 padding_mode=padding_type,

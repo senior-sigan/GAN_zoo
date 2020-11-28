@@ -9,7 +9,8 @@ from torch import nn
 from torch.optim import Adam
 from torch.optim.optimizer import Optimizer
 
-from gans_zoo.cyclegan.network import Discriminator, UNetGenerator, WeightsInit
+from gans_zoo.cyclegan.network import Discriminator, ResnetGenerator, \
+    UNetGenerator, WeightsInit
 from gans_zoo.cyclegan.scheduler import LinearLR
 
 
@@ -35,6 +36,8 @@ class LitCycleGAN(pl.LightningModule):
                             help='identity loss weight')
         parser.add_argument('--decay-start-epoch', type=int, default=100,
                             help='epoch from which to start lr decay')
+        parser.add_argument('--generator', type=str, default='unet',
+                            choices=['unet', 'resnet'], help='Generator type')
         return parser
 
     @classmethod
@@ -53,18 +56,32 @@ class LitCycleGAN(pl.LightningModule):
         lambda_identity: float = 10.0,
         lambda_cycle: float = 5.0,
         decay_start_epoch: int = 100,
+        generator: str = 'unet',
     ):
         super().__init__()
         self.save_hyperparameters()
 
-        self.generator_ab = UNetGenerator(
-            in_channels=in_channels,
-            out_channels=out_channels,
-        )
-        self.generator_ba = UNetGenerator(
-            in_channels=in_channels,
-            out_channels=out_channels,
-        )
+        if generator == 'unet':
+            self.generator_ab = UNetGenerator(
+                in_channels=in_channels,
+                out_channels=out_channels,
+            )
+            self.generator_ba = UNetGenerator(
+                in_channels=in_channels,
+                out_channels=out_channels,
+            )
+        elif generator == 'resnet':
+            self.generator_ab = ResnetGenerator(
+                in_channels=in_channels,
+                out_channels=out_channels,
+            )
+            self.generator_ba = ResnetGenerator(
+                in_channels=in_channels,
+                out_channels=out_channels,
+            )
+        else:
+            raise RuntimeError('Unknown generator {0}'.format(generator))
+
         self.discriminator_a = Discriminator(
             in_channels=in_channels,
         )

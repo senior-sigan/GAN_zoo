@@ -23,10 +23,10 @@ def test_resnet_block(padding_type):
 @pytest.mark.parametrize('padding_type', ['reflect', 'replicate', 'zeros'])
 def test_resnet_generator(padding_type):
     gen = ResnetGenerator(
-        input_nc=3,
-        output_nc=3,
+        in_channels=3,
+        out_channels=3,
         ngf=64,
-        norm_layer=nn.BatchNorm2d,
+        norm_layer_name='batch_norm',
         use_dropout=False,
         n_blocks=6,
         padding_type=padding_type,
