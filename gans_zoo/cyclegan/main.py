@@ -62,6 +62,7 @@ def main():
         batch_size=args.batch_size,
         shuffle=True,
         num_workers=args.workers,
+        pin_memory=True,
     )
 
     val_dataloaders = []

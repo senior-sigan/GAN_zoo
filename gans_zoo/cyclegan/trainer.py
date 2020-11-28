@@ -108,8 +108,8 @@ class LitCycleGAN(pl.LightningModule):
         self.discriminator_a.apply(WeightsInit())
         self.discriminator_b.apply(WeightsInit())
 
-        self.real_label = 1.0
-        self.fake_label = 0.0
+        self.register_buffer('real_label', torch.tensor(1.0))
+        self.register_buffer('fake_label', torch.tensor(1.0))
 
         self.patch = Discriminator.patch_size(input_size, input_size)
         self.input_size = input_size
@@ -246,8 +246,6 @@ class LitCycleGAN(pl.LightningModule):
         fake_a: torch.Tensor,
         fake_b: torch.Tensor,
     ):
-        y_real = torch.tensor(self.real_label, device=self.device)
-
         # Identity loss
         loss_identity_a = self.criterion_identity(
             self.generator_ba(real_a),
@@ -264,12 +262,12 @@ class LitCycleGAN(pl.LightningModule):
         d_fake_b_out = self.discriminator_b(fake_b)
         loss_gan_ab = self.criterion_GAN(
             d_fake_b_out,
-            y_real.expand_as(d_fake_b_out),
+            self.real_label.expand_as(d_fake_b_out),
         )
         d_fake_a_out = self.discriminator_a(fake_a)
         loss_gan_ba = self.criterion_GAN(
             d_fake_a_out,
-            y_real.expand_as(d_fake_a_out),
+            self.real_label.expand_as(d_fake_a_out),
         )
         loss_gan = (loss_gan_ab + loss_gan_ba) / 2
 
@@ -298,19 +296,16 @@ class LitCycleGAN(pl.LightningModule):
         discriminator: nn.Module,
         name: str,
     ):
-        y_real = torch.tensor(self.real_label, device=self.device)
-        y_fake = torch.tensor(self.fake_label, device=self.device)
-
         d_real_out = discriminator(real_x)
         loss_real = self.criterion_GAN(
             d_real_out,
-            y_real.expand_as(d_real_out),
+            self.real_label.expand_as(d_real_out),
         )
         # TODO: get fake from a ImagePool like in official implementation
         d_fake_out = discriminator(fake_x.detach())
         loss_fake = self.criterion_GAN(
             d_fake_out,
-            y_fake.expand_as(d_fake_out),
+            self.fake_label.expand_as(d_fake_out),
         )
 
         loss = (loss_real + loss_fake) / 2
