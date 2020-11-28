@@ -84,7 +84,7 @@ class UpScale(nn.Module):
         return x
 
 
-class Generator(nn.Module):
+class UNetGenerator(nn.Module):
     def __init__(self, in_channels=3, out_channels=3):
         """
         UNet-like Generator model.

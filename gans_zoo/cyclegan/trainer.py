@@ -9,7 +9,7 @@ from torch import nn
 from torch.optim import Adam
 from torch.optim.optimizer import Optimizer
 
-from gans_zoo.cyclegan.network import Discriminator, Generator, WeightsInit
+from gans_zoo.cyclegan.network import Discriminator, UNetGenerator, WeightsInit
 from gans_zoo.cyclegan.scheduler import LinearLR
 
 
@@ -57,11 +57,11 @@ class LitCycleGAN(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()
 
-        self.generator_ab = Generator(
+        self.generator_ab = UNetGenerator(
             in_channels=in_channels,
             out_channels=out_channels,
         )
-        self.generator_ba = Generator(
+        self.generator_ba = UNetGenerator(
             in_channels=in_channels,
             out_channels=out_channels,
         )
