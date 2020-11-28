@@ -11,6 +11,7 @@ from torch.optim.optimizer import Optimizer
 
 from gans_zoo.cyclegan.network import Discriminator, ResnetGenerator, \
     UNetGenerator, WeightsInit
+from gans_zoo.cyclegan.replay_buffer import ReplayPool
 from gans_zoo.cyclegan.scheduler import LinearLR
 
 
@@ -41,6 +42,11 @@ class LitCycleGAN(pl.LightningModule):
         parser.add_argument('--norm', type=str, default='instance',
                             choices=['instance', 'batch'],
                             help='type of normalization')
+        parser.add_argument(
+            '--pool_size', type=int, default=50,
+            help='the size of image buffer that stores previously generated '
+                 'images',
+        )
         return parser
 
     @classmethod
@@ -59,6 +65,7 @@ class LitCycleGAN(pl.LightningModule):
         lambda_identity: float = 10.0,
         lambda_cycle: float = 5.0,
         decay_start_epoch: int = 100,
+        pool_size: int = 50,
         norm: str = 'instance',
         generator: str = 'resnet',
     ):
@@ -111,6 +118,9 @@ class LitCycleGAN(pl.LightningModule):
         self.criterion_GAN = nn.MSELoss()
         self.criterion_cycle = nn.L1Loss()
         self.criterion_identity = nn.L1Loss()
+
+        self.fake_a_pool = ReplayPool(max_size=pool_size)
+        self.fake_b_pool = ReplayPool(max_size=pool_size)
 
     def configure_optimizers(self) -> Tuple[List[Optimizer], List]:
         lr = self.hparams.learning_rate
@@ -212,13 +222,19 @@ class LitCycleGAN(pl.LightningModule):
         if optimizer_idx == 0:
             return self.generator_loss(real_a, real_b, fake_a, fake_b)
         elif optimizer_idx == 1:
-            return self.discriminator_loss(real_a, fake_a,
-                                           self.discriminator_a,
-                                           'a')
+            return self.discriminator_loss(
+                real_a,
+                self.fake_a_pool.push_and_pop(fake_a),
+                self.discriminator_a,
+                'a',
+            )
         elif optimizer_idx == 2:
-            return self.discriminator_loss(real_b, fake_b,
-                                           self.discriminator_b,
-                                           'b')
+            return self.discriminator_loss(
+                real_b,
+                self.fake_b_pool.push_and_pop(fake_b),
+                self.discriminator_b,
+                'b',
+            )
 
         msg = 'Expected optimizer_idx eq 0, 1, or 2 but got {0}'
         raise AttributeError(msg.format(optimizer_idx))
