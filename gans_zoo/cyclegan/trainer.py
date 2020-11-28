@@ -36,7 +36,7 @@ class LitCycleGAN(pl.LightningModule):
                             help='identity loss weight')
         parser.add_argument('--decay-start-epoch', type=int, default=100,
                             help='epoch from which to start lr decay')
-        parser.add_argument('--generator', type=str, default='unet',
+        parser.add_argument('--generator', type=str, default='resnet',
                             choices=['unet', 'resnet'], help='Generator type')
         return parser
 
@@ -56,7 +56,7 @@ class LitCycleGAN(pl.LightningModule):
         lambda_identity: float = 10.0,
         lambda_cycle: float = 5.0,
         decay_start_epoch: int = 100,
-        generator: str = 'unet',
+        generator: str = 'resnet',
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -222,12 +222,7 @@ class LitCycleGAN(pl.LightningModule):
         fake_a: torch.Tensor,
         fake_b: torch.Tensor,
     ):
-        batch_size = real_a.shape[0]
-        y_real = torch.full(
-            size=(batch_size, *self.patch),
-            fill_value=self.real_label,
-            device=self.device,
-        )
+        y_real = torch.tensor(self.real_label, device=self.device)
 
         # Identity loss
         loss_identity_a = self.criterion_identity(
@@ -242,13 +237,15 @@ class LitCycleGAN(pl.LightningModule):
             loss_identity_a + loss_identity_b) / 2
 
         # GAN loss
+        d_fake_b_out = self.discriminator_b(fake_b)
         loss_gan_ab = self.criterion_GAN(
-            self.discriminator_b(fake_b),
-            y_real,
+            d_fake_b_out,
+            y_real.expand_as(d_fake_b_out),
         )
+        d_fake_a_out = self.discriminator_a(fake_a)
         loss_gan_ba = self.criterion_GAN(
-            self.discriminator_a(fake_a),
-            y_real,
+            d_fake_a_out,
+            y_real.expand_as(d_fake_a_out),
         )
         loss_gan = (loss_gan_ab + loss_gan_ba) / 2
 
@@ -277,20 +274,19 @@ class LitCycleGAN(pl.LightningModule):
         discriminator: nn.Module,
         name: str,
     ):
-        batch_size = real_x.shape[0]
-        y_real = torch.full((batch_size, *self.patch), self.real_label,
-                            device=self.device)
-        y_fake = torch.full((batch_size, *self.patch), self.fake_label,
-                            device=self.device)
+        y_real = torch.tensor(self.real_label, device=self.device)
+        y_fake = torch.tensor(self.fake_label, device=self.device)
 
+        d_real_out = discriminator(real_x)
         loss_real = self.criterion_GAN(
-            discriminator(real_x),
-            y_real,
+            d_real_out,
+            y_real.expand_as(d_real_out),
         )
         # TODO: get fake from a ImagePool like in official implementation
+        d_fake_out = discriminator(fake_x.detach())
         loss_fake = self.criterion_GAN(
-            discriminator(fake_x.detach()),
-            y_fake,
+            d_fake_out,
+            y_fake.expand_as(d_fake_out),
         )
 
         loss = (loss_real + loss_fake) / 2

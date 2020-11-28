@@ -1,7 +1,26 @@
-from typing import Optional, Tuple
+from functools import partial
+from typing import Callable, Optional, Tuple, Type
 
 import torch
 from torch import nn
+
+
+def get_norm_layer(name: str) -> Tuple[bool, Optional[Callable]]:
+    if name == 'batch_norm':
+        return False, nn.BatchNorm2d
+    elif name == 'instance_norm':
+        return True, nn.InstanceNorm2d
+    else:
+        return True, None
+
+
+def get_activation(name: str) -> Type[Callable]:
+    if name == 'leaky_relu':
+        return partial(nn.LeakyReLU, negative_slope=0.2)
+    elif name == 'relu':
+        return nn.ReLU
+    else:
+        raise RuntimeError('Unknown activation {0}'.format(name))
 
 
 class WeightsInit:
@@ -10,8 +29,12 @@ class WeightsInit:
 
     def __call__(self, layer: nn.Module) -> None:
         classname = layer.__class__.__name__
-        if classname.find('Conv') != -1:
+        if hasattr(layer, 'weight') and (
+            classname.find('Conv') != -1 or classname.find('Linear') != -1
+        ):
             torch.nn.init.normal_(layer.weight.data, 0.0, self.init_gain)
+            if hasattr(layer, 'bias') and layer.bias is not None:
+                torch.nn.init.constant_(layer.bias.data, 0.0)
         elif classname.find('BatchNorm2d') != -1:
             torch.nn.init.normal_(layer.weight.data, 1.0, self.init_gain)
             torch.nn.init.constant_(layer.bias.data, 0.0)
@@ -146,44 +169,90 @@ class UNetGenerator(nn.Module):
         return self.final(u7)
 
 
-class DiscriminatorBlock(nn.Module):
+class ConvBlock(nn.Module):
     def __init__(
         self,
         in_channels: int,
         out_channels: int,
+        kernel_size: int,
+        stride: int,
+        padding: int,
+        padding_mode: str,
         norm_layer: Optional[str],
+        activation: Optional[str],
     ):
         super().__init__()
 
-        # no need to use bias as BatchNorm2d has affine parameters
-        use_bias = norm_layer == 'instance_norm'
+        use_bias, norm_layer_func = get_norm_layer(norm_layer)
 
-        layers = [nn.Conv2d(
-            in_channels,
-            out_channels,
-            kernel_size=4,
-            stride=2,
-            padding=1,
-            bias=use_bias,
-        )]
+        layers = [
+            nn.Conv2d(
+                in_channels,
+                out_channels,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+                padding_mode=padding_mode,
+                bias=use_bias,
+            ),
+        ]
 
-        if norm_layer == 'batch_norm':
-            layers.append(nn.BatchNorm2d(out_channels))
-        elif norm_layer == 'instance_norm':
-            layers.append(nn.InstanceNorm2d(out_channels))
+        if norm_layer_func is not None:
+            layers.append(norm_layer_func(out_channels))
 
-        layers.append(nn.LeakyReLU(0.2, inplace=True))
+        if activation == 'leaky_relu':
+            layers.append(nn.LeakyReLU(0.2, inplace=True))
+        elif activation == 'relu':
+            layers.append(nn.ReLU(inplace=True))
         self.model = nn.Sequential(*layers)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)
 
 
+class UpConvBlock(nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int,
+        stride: int,
+        padding: int,
+        padding_mode: str,
+        norm_layer: Optional[str],
+        activation: Optional[str],
+    ):
+        super().__init__()
+        # Upsample instead of transposed conv
+        # https://distill.pub/2016/deconv-checkerboard/
+
+        use_bias, norm_layer_func = get_norm_layer(norm_layer)
+        activation_func = get_activation(activation)
+
+        self.block = nn.Sequential(
+            nn.Upsample(scale_factor=2, mode='nearest'),
+            nn.Conv2d(
+                in_channels=in_channels,
+                out_channels=out_channels,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+                padding_mode=padding_mode,
+                bias=use_bias
+            ),
+            norm_layer_func(out_channels),
+            activation_func(inplace=True)
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.block(x)
+
+
 class Discriminator(nn.Module):
     def __init__(
         self,
         in_channels=3,
-        norm_layer: Optional[str] = 'instance_norm',
+        norm_layer: Optional[str] = 'batch_norm',
         ngf: int = 64
     ):
         """
@@ -196,13 +265,27 @@ class Discriminator(nn.Module):
         :param ngf: number of generator filters. By default is 64
         """
         super().__init__()
+        conv_block = partial(
+            ConvBlock,
+            kernel_size=4,
+            padding=1,
+            padding_mode='zeros',
+            activation='leaky_relu'
+        )
         self.model = nn.Sequential(
-            DiscriminatorBlock(in_channels, ngf, norm_layer=None),
-            DiscriminatorBlock(ngf, ngf * 2, norm_layer=norm_layer),
-            DiscriminatorBlock(ngf * 2, ngf * 4, norm_layer=norm_layer),
-            DiscriminatorBlock(ngf * 4, ngf * 8, norm_layer=norm_layer),
-            nn.ZeroPad2d((1, 0, 1, 0)),
-            nn.Conv2d(ngf * 8, 1, kernel_size=4, padding=1, bias=False),
+            conv_block(in_channels=in_channels, out_channels=ngf, stride=2,
+                       norm_layer=None),
+            conv_block(in_channels=ngf, out_channels=ngf * 2, stride=2,
+                       norm_layer=norm_layer),
+            conv_block(in_channels=ngf * 2, out_channels=ngf * 4, stride=2,
+                       norm_layer=norm_layer),
+            conv_block(in_channels=ngf * 4, out_channels=ngf * 8, stride=2,
+                       norm_layer=norm_layer),
+            conv_block(in_channels=ngf * 8, out_channels=ngf * 8, stride=1,
+                       norm_layer=norm_layer),
+            nn.Conv2d(in_channels=ngf * 8, out_channels=1, kernel_size=4,
+                      stride=1,
+                      padding=1, bias=False),
         )
 
     def forward(
@@ -225,7 +308,6 @@ class ResnetBlock(nn.Module):
         padding_type: str,
         norm_layer,
         use_dropout: bool,
-        use_bias: bool,
     ):
         """
         Construct the Resnet block.
@@ -241,9 +323,10 @@ class ResnetBlock(nn.Module):
             reflect | replicate | zeros
         :param norm_layer: normalization layer
         :param use_dropout: if use dropout layers.
-        :param use_bias: if the conv layer uses bias or not
         """
         super().__init__()
+
+        use_bias, norm_layer_func = get_norm_layer(norm_layer)
 
         block = nn.Sequential()
         block.add_module('conv_1', nn.Conv2d(
@@ -254,7 +337,7 @@ class ResnetBlock(nn.Module):
             bias=use_bias,
             padding_mode=padding_type,
         ))
-        block.add_module('norm_1', norm_layer(channels))
+        block.add_module('norm_1', norm_layer_func(channels))
         block.add_module('activation', nn.ReLU(inplace=True))
         if use_dropout:
             block.add_module('dropout', nn.Dropout(0.5))
@@ -266,7 +349,7 @@ class ResnetBlock(nn.Module):
             bias=use_bias,
             padding_mode=padding_type,
         ))
-        block.add_module('norm_2', norm_layer(channels))
+        block.add_module('norm_2', norm_layer_func(channels))
 
         self.block = block
 
@@ -274,53 +357,6 @@ class ResnetBlock(nn.Module):
         """Forward function (with skip connections)"""
         out = x + self.block(x)  # add skip connections
         return out
-
-
-def upsample_conv_norm_relu(
-    ngf: int,
-    use_bias: bool,
-    norm_layer,
-):
-    # Upsample instead of transposed conv
-    # https://distill.pub/2016/deconv-checkerboard/
-    return nn.Sequential(
-        nn.Upsample(scale_factor=2, mode='nearest'),
-        nn.Conv2d(
-            in_channels=ngf,
-            out_channels=int(ngf / 2),
-            kernel_size=3,
-            stride=1,
-            padding=1,
-            bias=use_bias
-        ),
-        norm_layer(int(ngf / 2)),
-        nn.ReLU(inplace=True)
-    )
-
-
-def conv_norm_relu_block(
-    in_channels: int,
-    out_channels: int,
-    norm_layer,
-    kernel_size: int,
-    stride: int,
-    padding: int,
-    bias: bool,
-    padding_mode: str,
-):
-    return nn.Sequential(
-        nn.Conv2d(
-            in_channels,
-            out_channels,
-            kernel_size=kernel_size,
-            stride=stride,
-            padding=padding,
-            padding_mode=padding_mode,
-            bias=bias,
-        ),
-        norm_layer(out_channels),
-        nn.ReLU(True),
-    )
 
 
 class ResnetGenerator(nn.Module):
@@ -337,7 +373,7 @@ class ResnetGenerator(nn.Module):
         in_channels: int = 3,
         out_channels: int = 3,
         ngf: int = 64,
-        norm_layer_name: str = 'batch_norm',
+        norm_layer: str = 'batch_norm',
         use_dropout: bool = False,
         n_blocks: int = 6,
         padding_type: str = 'reflect',
@@ -348,7 +384,7 @@ class ResnetGenerator(nn.Module):
         :param in_channels: the number of channels in input images
         :param out_channels: the number of channels in output images
         :param ngf: the number of filters in the last conv layer
-        :param norm_layer_name: the name of normalization layer:
+        :param norm_layer: the name of normalization layer:
             batch_norm | instance_norm
         :param use_dropout: if use dropout layers
         :param n_blocks: the number of ResNet blocks
@@ -360,40 +396,30 @@ class ResnetGenerator(nn.Module):
         assert (out_channels > 0)
         super().__init__()
 
-        if norm_layer_name == 'batch_norm':
-            norm_layer = nn.BatchNorm2d
-            use_bias = False
-        elif norm_layer_name == 'instance_norm':
-            norm_layer = nn.InstanceNorm2d
-            use_bias = True
-        else:
-            raise RuntimeError(
-                'Unknown norm_layer_name {0}'.format(norm_layer_name))
-
         model = []
-        model += [conv_norm_relu_block(
+        model += [ConvBlock(
             in_channels=in_channels,
             out_channels=ngf,
             kernel_size=7,
             stride=1,
             padding=3,
-            bias=use_bias,
             padding_mode=padding_type,
             norm_layer=norm_layer,
+            activation='relu',
         )]
 
         n_downsampling = 2
         for i in range(n_downsampling):
             mult = 2 ** i
-            model += [conv_norm_relu_block(
+            model += [ConvBlock(
                 in_channels=ngf * mult,
                 out_channels=ngf * mult * 2,
                 kernel_size=3,
                 stride=2,
                 padding=1,
-                bias=use_bias,
                 padding_mode='zeros',
                 norm_layer=norm_layer,
+                activation='relu',
             )]
 
         mult = 2 ** n_downsampling
@@ -403,20 +429,24 @@ class ResnetGenerator(nn.Module):
                 padding_type=padding_type,
                 norm_layer=norm_layer,
                 use_dropout=use_dropout,
-                use_bias=use_bias,
             )]
 
         for i in range(n_downsampling):
             mult = 2 ** (n_downsampling - i)
-            model += [upsample_conv_norm_relu(
-                ngf=ngf * mult,
-                use_bias=use_bias,
+            model += [UpConvBlock(
+                in_channels=ngf * mult,
+                out_channels=int(ngf * mult / 2),
+                kernel_size=3,
+                stride=1,
+                padding=1,
+                padding_mode='zeros',
                 norm_layer=norm_layer,
+                activation='relu',
             )]
         model += [
             nn.Conv2d(
-                ngf,
-                out_channels,
+                in_channels=ngf,
+                out_channels=out_channels,
                 kernel_size=7,
                 padding=3,
                 padding_mode=padding_type,
