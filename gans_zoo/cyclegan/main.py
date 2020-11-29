@@ -5,10 +5,12 @@ import pytorch_lightning as pl
 from torch.utils.data.dataloader import DataLoader
 from torchvision import transforms
 
+from gans_zoo.callbacks.cyclegan_telegram import TelegramLoggerCallback
 from gans_zoo.callbacks.cyclegan_tensorboard import TensorboardCycleGAN
+from gans_zoo.callbacks.unpaired_sampler import UnpairedGridGenerator
 from gans_zoo.cyclegan.trainer import LitCycleGAN
 from gans_zoo.data.unpaired_data import UnpairedImagesFolderDataset
-from gans_zoo.utils import norm_zero_one
+from telegram_logger.logger import TelegramLogger
 
 
 def add_data_specific_args(parent_parser: ArgumentParser) -> ArgumentParser:
@@ -22,6 +24,14 @@ def add_data_specific_args(parent_parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument(
         '--load_size', type=int, default=286,
         help='scale loaded images and then crop to a smaller size',
+    )
+    parser.add_argument(
+        '--tg-token', type=str, required=False,
+        help='Telegram bot token. Used to send epoch results to a chat',
+    )
+    parser.add_argument(
+        '--tg-chat-id', type=int, required=False,
+        help='Chat where to post epoch results',
     )
     return parser
 
@@ -82,9 +92,16 @@ def main():
         )
         val_dataloaders.append(val_loader)
 
+    grid_generator = UnpairedGridGenerator()
     callbacks = [
-        TensorboardCycleGAN(num_samples=3, normalize=norm_zero_one),
+        TensorboardCycleGAN(grid_generator),
     ]
+    if args.tg_token is not None:
+        tg_logger = TelegramLogger(
+            token=args.tg_token,
+            chat_id=args.tf_chat_id,
+            module_name=__name__)
+        callbacks += [TelegramLoggerCallback(grid_generator, tg_logger)]
 
     trainer = pl.Trainer.from_argparse_args(args, callbacks=callbacks)
 
