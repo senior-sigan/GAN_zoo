@@ -109,7 +109,7 @@ class LitCycleGAN(pl.LightningModule):
         self.discriminator_b.apply(WeightsInit())
 
         self.register_buffer('real_label', torch.tensor(1.0))
-        self.register_buffer('fake_label', torch.tensor(1.0))
+        self.register_buffer('fake_label', torch.tensor(0.0))
 
         self.patch = Discriminator.patch_size(input_size, input_size)
         self.input_size = input_size
