@@ -99,7 +99,7 @@ def main():
     if args.tg_token is not None:
         tg_logger = TelegramLogger(
             token=args.tg_token,
-            chat_id=args.tf_chat_id,
+            chat_id=args.tg_chat_id,
             module_name=__name__)
         callbacks += [TelegramLoggerCallback(grid_generator, tg_logger)]
 
