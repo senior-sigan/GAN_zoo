@@ -10,6 +10,7 @@ from gans_zoo.callbacks.cyclegan_tensorboard import TensorboardCycleGAN
 from gans_zoo.callbacks.unpaired_sampler import UnpairedGridGenerator
 from gans_zoo.cyclegan.trainer import LitCycleGAN
 from gans_zoo.data.unpaired_data import UnpairedImagesFolderDataset
+from gans_zoo.utils import norm_zero_one
 from telegram_logger.logger import TelegramLogger
 
 
@@ -92,7 +93,7 @@ def main():
         )
         val_dataloaders.append(val_loader)
 
-    grid_generator = UnpairedGridGenerator()
+    grid_generator = UnpairedGridGenerator(normalize=norm_zero_one)
     callbacks = [
         TensorboardCycleGAN(grid_generator),
     ]
