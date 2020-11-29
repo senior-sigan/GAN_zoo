@@ -9,10 +9,14 @@ def test_fit():
     model = LitCycleGAN(decay_start_epoch=0)
     trainer = pl.Trainer(max_epochs=1, fast_dev_run=True)
 
-    train_loader = DataLoader(FakeUnpairedImagesDataset(model.img_dim),
-                              batch_size=1)
-    val_loader = DataLoader(FakeUnpairedImagesDataset(model.img_dim),
-                            batch_size=1)
+    train_loader = DataLoader(
+        FakeUnpairedImagesDataset(model.img_dim),
+        batch_size=1,
+    )
+    val_loader = DataLoader(
+        FakeUnpairedImagesDataset(model.img_dim),
+        batch_size=1,
+    )
     trainer.fit(
         model,
         train_dataloader=train_loader,

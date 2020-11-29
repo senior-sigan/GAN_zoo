@@ -43,15 +43,20 @@ class LitCycleGAN(pl.LightningModule):
                             choices=['instance', 'batch'],
                             help='type of normalization')
         parser.add_argument(
-            '--pool_size', type=int, default=50,
+            '--pool_size',
+            type=int,
+            default=50,
             help='the size of image buffer that stores previously generated '
                  'images',
         )
         return parser
 
     @classmethod
-    def from_argparse_args(cls, args: Union[Namespace, ArgumentParser],
-                           **kwargs) -> 'LitCycleGAN':
+    def from_argparse_args(
+        cls,
+        args: Union[Namespace, ArgumentParser],
+        **kwargs,
+    ) -> 'LitCycleGAN':
         return argparse_utils.from_argparse_args(cls, args, **kwargs)
 
     def __init__(
@@ -189,9 +194,9 @@ class LitCycleGAN(pl.LightningModule):
             return self.forward_ab(x)
         elif direction == 'ba':
             return self.forward_ba(x)
-        else:
-            msg = 'Unknown direction {0}. Expected "ab" or "ba"'
-            raise RuntimeError(msg.format(direction))
+
+        msg = 'Unknown direction {0}. Expected "ab" or "ba"'
+        raise RuntimeError(msg.format(direction))
 
     def forward_ab(
         self,
@@ -281,12 +286,16 @@ class LitCycleGAN(pl.LightningModule):
 
         loss = loss_gan + loss_cycle + loss_identity
 
-        self.log_dict({
-            'g_loss': loss,
-            'gan_loss': loss_gan,
-            'id_loss': loss_identity,
-            'cycle_loss': loss_cycle,
-        }, on_epoch=True, prog_bar=True)
+        self.log_dict(
+            {
+                'g_loss': loss,
+                'gan_loss': loss_gan,
+                'id_loss': loss_identity,
+                'cycle_loss': loss_cycle,
+            },
+            on_epoch=True,
+            prog_bar=True,
+        )
         return loss
 
     def discriminator_loss(
@@ -310,9 +319,13 @@ class LitCycleGAN(pl.LightningModule):
 
         loss = (loss_real + loss_fake) / 2
 
-        self.log_dict({
-            f'd_{name}_loss': loss,
-            f'real_{name}_loss': loss_real,
-            f'fake_{name}_loss': loss_fake,
-        }, on_epoch=True, prog_bar=True)
+        self.log_dict(
+            {
+                f'd_{name}_loss': loss,
+                f'real_{name}_loss': loss_real,
+                f'fake_{name}_loss': loss_fake,
+            },
+            on_epoch=True,
+            prog_bar=True,
+        )
         return loss

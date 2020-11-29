@@ -5,7 +5,9 @@ import torch
 from torch import nn
 
 
-def get_norm_layer(name: str) -> Tuple[bool, Optional[Callable]]:
+def get_norm_layer(
+    name: str
+) -> Tuple[bool, Optional[Callable[..., nn.Module]]]:
     if name == 'batch':
         return False, nn.BatchNorm2d
     elif name == 'instance':
@@ -14,7 +16,7 @@ def get_norm_layer(name: str) -> Tuple[bool, Optional[Callable]]:
         return True, None
 
 
-def get_activation(name: str) -> Type[Callable]:
+def get_activation(name: str) -> Type[Callable[..., nn.Module]]:
     if name == 'leaky_relu':
         return partial(nn.LeakyReLU, negative_slope=0.2)
     elif name == 'relu':
@@ -108,7 +110,7 @@ class UpScale(nn.Module):
 
 
 class UNetGenerator(nn.Module):
-    def __init__(self, in_channels=3, out_channels=3):
+    def __init__(self, in_channels=3, out_channels=3) -> None:
         """
         UNet-like Generator model.
 
@@ -180,7 +182,7 @@ class ConvBlock(nn.Module):
         padding_mode: str,
         norm_layer: Optional[str],
         activation: Optional[str],
-    ):
+    ) -> None:
         super().__init__()
 
         use_bias, norm_layer_func = get_norm_layer(norm_layer)
@@ -221,7 +223,7 @@ class UpConvBlock(nn.Module):
         padding_mode: str,
         norm_layer: Optional[str],
         activation: Optional[str],
-    ):
+    ) -> None:
         super().__init__()
         # Upsample instead of transposed conv
         # https://distill.pub/2016/deconv-checkerboard/
@@ -254,7 +256,7 @@ class Discriminator(nn.Module):
         in_channels=3,
         norm_layer: Optional[str] = 'batch',
         ngf: int = 64
-    ):
+    ) -> None:
         """
         Patch-Discriminator.
 
@@ -308,7 +310,7 @@ class ResnetBlock(nn.Module):
         padding_type: str,
         norm_layer,
         use_dropout: bool,
-    ):
+    ) -> None:
         """
         Construct the Resnet block.
 

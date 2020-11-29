@@ -60,8 +60,8 @@ class LitPix2Pix(pl.LightningModule):
         )
         self.discriminator.apply(weights_init)
 
-        self.real_label = 1.0
-        self.fake_label = 0.0
+        self.register_buffer('real_label', torch.tensor(1.0))
+        self.register_buffer('fake_label', torch.tensor(0.0))
 
         self.patch = Discriminator.patch_size(input_size, input_size)
         self.input_size = input_size
@@ -87,8 +87,11 @@ class LitPix2Pix(pl.LightningModule):
         if optimizer_idx == 0:
             return self.generator_loss(input_img, target_img, fake_img)
         elif optimizer_idx == 1:
-            return self.discriminator_loss(input_img, target_img,
-                                           fake_img.detach())
+            return self.discriminator_loss(
+                input_img,
+                target_img,
+                fake_img.detach(),
+            )
 
         msg = 'Expected optimizer_idx eq 0 or 1 but got {0}'
         raise AttributeError(msg.format(optimizer_idx))
@@ -117,13 +120,9 @@ class LitPix2Pix(pl.LightningModule):
         target_img: torch.Tensor,
         fake_img: torch.Tensor,
     ):
-        batch_size = input_img.shape[0]
-        y_real = torch.full((batch_size, *self.patch), self.real_label,
-                            device=self.device)
+        d_output = self.discriminator(input_img, fake_img)
 
-        D_output = self.discriminator(input_img, fake_img)
-
-        gan_loss = F.mse_loss(D_output, y_real)
+        gan_loss = F.mse_loss(d_output, self.real_label.expand_as(d_output))
         pixelwise_loss = F.l1_loss(fake_img, target_img)
 
         g_loss = gan_loss + self.hparams.lambda_pixel * pixelwise_loss
@@ -137,18 +136,11 @@ class LitPix2Pix(pl.LightningModule):
         target_img: torch.Tensor,
         fake_img: torch.Tensor,
     ):
-        batch_size = input_img.shape[0]
-        y_real = torch.full((batch_size, *self.patch), self.real_label,
-                            device=self.device)
-
         d_output = self.discriminator(input_img, target_img)
-        d_real_loss = F.mse_loss(d_output, y_real)
-
-        y_fake = torch.full((batch_size, *self.patch), self.fake_label,
-                            device=self.device)
+        d_real_loss = F.mse_loss(d_output, self.real_label.expand_as(d_output))
 
         d_output = self.discriminator(input_img, fake_img)
-        d_fake_loss = F.mse_loss(d_output, y_fake)
+        d_fake_loss = F.mse_loss(d_output, self.fake_label.expand_as(d_output))
 
         d_loss = (d_real_loss + d_fake_loss) * 0.5
 

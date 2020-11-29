@@ -32,7 +32,7 @@ class ImagesFolder(data.Dataset[TData]):
                 msg += 'Supported extensions are: {0}'.format(exts)
             raise RuntimeError(msg)
 
-        print("Found {0} files in {1}".format(len(samples), root))
+        print('Found {0} files in {1}'.format(len(samples), root))
 
         self.root = root
         self.transform = transform
