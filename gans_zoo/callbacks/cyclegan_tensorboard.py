@@ -1,4 +1,5 @@
 import pytorch_lightning as pl
+from pytorch_lightning.utilities import rank_zero_only
 
 from gans_zoo.callbacks.unpaired_sampler import UnpairedGridGenerator
 
@@ -11,6 +12,7 @@ class TensorboardCycleGAN(pl.Callback):
         super().__init__()
         self.generator = generator
 
+    @rank_zero_only
     def on_epoch_end(
         self,
         trainer: pl.Trainer,

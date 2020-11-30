@@ -1,4 +1,5 @@
 import pytorch_lightning as pl
+from pytorch_lightning.utilities import rank_zero_only
 
 from gans_zoo.callbacks.unpaired_sampler import UnpairedGridGenerator
 from gans_zoo.utils import tensor_to_file_like_object
@@ -15,6 +16,7 @@ class TelegramLoggerCallback(pl.Callback):
         self.generator = generator
         self.tg_logger = tg_logger
 
+    @rank_zero_only
     def on_epoch_end(
         self,
         trainer: pl.Trainer,
