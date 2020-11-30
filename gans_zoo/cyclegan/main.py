@@ -50,8 +50,8 @@ def main():
 
     train_transform = transforms.Compose([
         transforms.Resize(args.load_size),
+        transforms.RandomRotation(degrees=180),
         transforms.RandomCrop(model.input_size),
-        transforms.RandomHorizontalFlip(),
         transforms.RandomVerticalFlip(),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
