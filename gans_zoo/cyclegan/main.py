@@ -88,7 +88,7 @@ def main():
         val_loader = DataLoader(
             val_ds,
             batch_size=args.batch_size,
-            shuffle=True,
+            shuffle=False,
             num_workers=args.workers,
         )
         val_dataloaders.append(val_loader)
