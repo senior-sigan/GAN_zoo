@@ -250,6 +250,7 @@ class LitCycleGAN(pl.LightningModule):
         real_b: torch.Tensor,
         fake_a: torch.Tensor,
         fake_b: torch.Tensor,
+        log_prefix: str = '',
     ):
         # Identity loss
         loss_identity_a = self.criterion_identity(
@@ -288,10 +289,10 @@ class LitCycleGAN(pl.LightningModule):
 
         self.log_dict(
             {
-                'g_loss': loss,
-                'gan_loss': loss_gan,
-                'id_loss': loss_identity,
-                'cycle_loss': loss_cycle,
+                f'g_{log_prefix}loss': loss,
+                f'gan_{log_prefix}loss': loss_gan,
+                f'id_{log_prefix}loss': loss_identity,
+                f'cycle_{log_prefix}loss': loss_cycle,
             },
             on_epoch=True,
             prog_bar=True,
@@ -304,13 +305,14 @@ class LitCycleGAN(pl.LightningModule):
         fake_x: torch.Tensor,
         discriminator: nn.Module,
         name: str,
+        log_prefix: str = '',
     ):
         d_real_out = discriminator(real_x)
         loss_real = self.criterion_GAN(
             d_real_out,
             self.real_label.expand_as(d_real_out),
         )
-        # TODO: get fake from a ImagePool like in official implementation
+
         d_fake_out = discriminator(fake_x.detach())
         loss_fake = self.criterion_GAN(
             d_fake_out,
@@ -321,11 +323,39 @@ class LitCycleGAN(pl.LightningModule):
 
         self.log_dict(
             {
-                f'd_{name}_loss': loss,
-                f'real_{name}_loss': loss_real,
-                f'fake_{name}_loss': loss_fake,
+                f'd_{name}_{log_prefix}loss': loss,
+                f'real_{name}_{log_prefix}loss': loss_real,
+                f'fake_{name}_{log_prefix}loss': loss_fake,
             },
             on_epoch=True,
             prog_bar=True,
         )
         return loss
+
+    def validation_step(
+        self,
+        batch: Dict[str, torch.Tensor],
+        batch_idx: int,
+    ):
+        real_a, real_b = batch
+        fake_a = self.generator_ba(real_b)
+        fake_b = self.generator_ab(real_a)
+
+        val_gen_loss = self.generator_loss(real_a, real_b, fake_a, fake_b,
+                                           'val_')
+        val_d_a_loss = self.discriminator_loss(
+            real_a,
+            self.fake_a_pool.push_and_pop(fake_a),
+            self.discriminator_a,
+            'a',
+            'val_',
+        )
+        val_d_b_loss = self.discriminator_loss(
+            real_b,
+            self.fake_b_pool.push_and_pop(fake_b),
+            self.discriminator_b,
+            'b',
+            'val_',
+        )
+
+        return val_gen_loss, val_d_a_loss, val_d_b_loss
