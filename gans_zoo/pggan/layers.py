@@ -71,3 +71,20 @@ class EqualizedLinear(EqualizedLayer):
             out_features=out_features,
             bias=True,
         ))
+
+
+class PixelwiseNormalization(nn.Module):
+    """
+    4.2 PIXELWISE FEATURE VECTOR NORMALIZATION IN GENERATOR
+    A variant of “local response normalization” (Krizhevsky et al., 2012).
+    With most datasets it does not change the results much, but it prevents
+    the escalation of signal magnitudes very effectively when needed.
+    """
+
+    def __init__(self, epsilon=1e-8):
+        super().__init__()
+        self.epsilon = epsilon
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # TODO: it should be / but here is *
+        return x * (((x ** 2).mean(dim=1, keepdim=True) + self.epsilon).rsqrt())
