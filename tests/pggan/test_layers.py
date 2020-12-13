@@ -3,7 +3,8 @@ import torch
 
 from gans_zoo.pggan.layers import EqualizedConv2d, \
     get_layer_normalization_factor
-from gans_zoo.pggan.network import Generator
+from gans_zoo.pggan.mini_batch_stddev_layer import minibatch_stddev_layer
+from gans_zoo.pggan.network import Discriminator, Generator
 
 
 def test_conv2d_equalized():
@@ -59,3 +60,37 @@ def test_generator_add_layers(alpha: float):
     out = gen.forward(z)
     assert out.shape == (2, 3, 64, 64)
     assert out.shape == (2, 3, *gen.output_size)
+
+
+def test_discriminator():
+    net = Discriminator(depth_scale_0=32, nc=3)
+
+    out = net(torch.randn(2, 3, 4, 4))
+    assert out.shape == (2, 1)
+
+    print("Add 16")
+    net.add_layer(16)
+    out = net(torch.randn(2, 3, 8, 8))
+    assert out.shape == (2, 1)
+
+    print("Add 8")
+    net.add_layer(8)
+    out = net(torch.randn(2, 3, 16, 16))
+    assert out.shape == (2, 1)
+
+    print("Add 4")
+    net.add_layer(4)
+    out = net(torch.randn(2, 3, 32, 32))
+    assert out.shape == (2, 1)
+
+    print("Add 4 with alpha")
+    net.add_layer(4)
+    net.alpha = 1
+    out = net(torch.randn(2, 3, 64, 64))
+    assert out.shape == (2, 1)
+
+
+def test_minibatch_stddev_layer():
+    sample = torch.randn(2, 64, 32, 32)
+    out = minibatch_stddev_layer(sample)
+    assert out.shape == (2, 65, 32, 32)

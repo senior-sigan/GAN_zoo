@@ -5,6 +5,7 @@ from torch import nn
 
 from gans_zoo.pggan.layers import EqualizedConv2d, EqualizedLinear, \
     PixelwiseNormalization
+from gans_zoo.pggan.mini_batch_stddev_layer import minibatch_stddev_layer
 
 
 class Generator(nn.Module):
@@ -142,4 +143,103 @@ class Generator(nn.Module):
 
 
 class Discriminator(nn.Module):
-    pass
+    def __init__(
+        self,
+        depth_scale_0: int = 512,
+        nc: int = 3,
+    ):
+        super().__init__()
+        self.nc = nc
+        self.depth_scale_0 = depth_scale_0
+        self.scale_depths = [depth_scale_0]
+        self.alpha = 0
+
+        self.lrely = nn.LeakyReLU(0.2)
+        self.downsample = nn.AvgPool2d(2)
+        self.decision_layer = nn.Sequential(
+            EqualizedConv2d(
+                in_channels=self.scale_depths[0] + 1,
+                out_channels=self.scale_depths[0],
+                kernel_size=3,
+                padding=1,
+            ),
+            nn.Flatten(),
+            EqualizedLinear(  # in the paper it conv4x4
+                in_features=self.scale_depths[0] * 16,
+                out_features=self.scale_depths[0],
+            ),
+            EqualizedLinear(
+                in_features=self.scale_depths[0],
+                out_features=1,
+            ),
+        )
+        self.scale_layers: List[nn.Module] = []
+        self.from_rgb: List[nn.Module] = [self._from_rgb_block(
+            out_channels=self.scale_depths[0],
+        )]
+
+    def add_layer(self, next_depth):
+        prev_depth = self.scale_depths[0]
+        self.scale_depths.insert(0, next_depth)
+
+        self.scale_layers.insert(0, self._conv_block(
+            next_depth=next_depth,
+            prev_depth=prev_depth,
+        ))
+        self.from_rgb.insert(0, self._from_rgb_block(
+            out_channels=next_depth,
+        ))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self._blend_layers(x)
+        for i, layer in enumerate(self.scale_layers[1:]):
+            x = layer(x)
+
+        x = minibatch_stddev_layer(x)
+        x = self.lrely(x)
+        x = self.decision_layer(x)
+        return x
+
+    def _conv_block(self, next_depth: int, prev_depth: int) -> nn.Module:
+        """Create a block of convolution layers with activations and norms."""
+        return nn.Sequential(
+            EqualizedConv2d(
+                in_channels=next_depth,
+                out_channels=next_depth,
+                kernel_size=3,
+                padding=1,
+            ),
+            self.lrely,
+            EqualizedConv2d(
+                in_channels=next_depth,
+                out_channels=prev_depth,
+                kernel_size=3,
+                padding=1,
+            ),
+            self.lrely,
+            self.downsample,
+        )
+
+    def _from_rgb_block(self, out_channels):
+        return nn.Sequential(
+            EqualizedConv2d(
+                in_channels=self.nc,
+                out_channels=out_channels,
+                kernel_size=1,
+            ),
+            self.lrely,
+        )
+
+    def _blend_layers(self, x):
+        x1 = self.from_rgb[0](x)
+
+        if len(self.scale_layers) > 0:
+            x1 = self.scale_layers[0](x1)
+
+        if self.alpha > 0 and len(self.from_rgb) > 1:
+            x2 = self.downsample(x)
+            x2 = self.from_rgb[1](x2)
+
+            return self.alpha * x2 + x1 * (1 - self.alpha)
+
+        return x1
