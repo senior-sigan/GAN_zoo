@@ -94,3 +94,49 @@ def test_minibatch_stddev_layer():
     sample = torch.randn(2, 64, 32, 32)
     out = minibatch_stddev_layer(sample)
     assert out.shape == (2, 65, 32, 32)
+
+
+def test_gen_disc():
+    dis = Discriminator(depth_scale_0=32, nc=3)
+    gen = Generator(nz=32, depth_scale_0=32, nc=3)
+
+    fake = gen(torch.randn(2, 32))
+    assert fake.shape == (2, 3, 4, 4)
+    out = dis(fake)
+    assert out.shape == (2, 1)
+
+    dis.add_layer(64)
+    gen.add_layer(64)
+    dis.alpha = 0.9
+    gen.alpha = 0.9
+
+    fake = gen(torch.randn(2, 32))
+    assert fake.shape == (2, 3, 8, 8)
+    out = dis(fake)
+    assert out.shape == (2, 1)
+
+    dis.alpha = 0
+    gen.alpha = 0
+
+    fake = gen(torch.randn(2, 32))
+    assert fake.shape == (2, 3, 8, 8)
+    out = dis(fake)
+    assert out.shape == (2, 1)
+
+    dis.add_layer(64)
+    gen.add_layer(64)
+    dis.alpha = 0.9
+    gen.alpha = 0.9
+
+    fake = gen(torch.randn(2, 32))
+    assert fake.shape == (2, 3, 16, 16)
+    out = dis(fake)
+    assert out.shape == (2, 1)
+
+    dis.alpha = 0
+    gen.alpha = 0
+
+    fake = gen(torch.randn(2, 32))
+    assert fake.shape == (2, 3, 16, 16)
+    out = dis(fake)
+    assert out.shape == (2, 1)

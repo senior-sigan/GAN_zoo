@@ -3,21 +3,43 @@ from argparse import ArgumentParser
 import pytorch_lightning as pl
 from pl_bolts.callbacks import LatentDimInterpolator, \
     TensorboardGenerativeModelImageSampler
+from torch.utils.data import DataLoader
 
-from gans_zoo.pggan.data import PGGANData
+from gans_zoo.pggan.data import build_dataset
 from gans_zoo.pggan.trainer import LitPGGAN
 
 IMG_SIZE_TO_BATCH_SIZE = {
-    1024: 1,
+    1024: 2,
     512: 2,
-    256: 4,
-    128: 8,
-    64: 16,
-    32: 32,
-    16: 64,
-    8: 128,
-    4: 256,
+    256: 2,
+    128: 2,
+    64: 2,
+    32: 2,
+    16: 2,
+    8: 2,
+    4: 2,
 }
+
+SCALE_SIZES = [
+    (512, 4),
+    (512, 8),
+    (512, 16),
+    (512, 32),
+    (256, 64),
+    (128, 128),
+    (64, 256),
+    (32, 512),
+    (16, 1024),
+]
+
+STAGES = ['grow', 'stabilise']
+
+STEPS = [
+            (stage, scale, size)
+            for scale, size in SCALE_SIZES
+            for stage in
+            STAGES
+        ][1:]
 
 
 def add_data_specific_args(parent_parser: ArgumentParser) -> ArgumentParser:
@@ -26,6 +48,24 @@ def add_data_specific_args(parent_parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument('--workers', type=int, default=8,
                         help='Number of Data Loader workers')
     return parser
+
+
+def train(trainer, model, stage, scale, size, args):
+    print()
+    print('-' * 80)
+    print(f'Stage {stage}. Image size {size}. Scale {scale}')
+    print('-' * 80)
+    print()
+
+    dataset = build_dataset(args.data_dir, size)
+    dataloader = DataLoader(
+        dataset,
+        batch_size=IMG_SIZE_TO_BATCH_SIZE[size],
+        shuffle=True,
+        num_workers=args.workers,
+    )
+    model.grow(stage, scale, size, n_batches=len(dataloader))
+    trainer.fit(model, train_dataloader=dataloader)
 
 
 def main():
@@ -45,13 +85,9 @@ def main():
 
     trainer = pl.Trainer.from_argparse_args(args, callbacks=callbacks, )
 
-    data = PGGANData(root=args.data_dir, batches=IMG_SIZE_TO_BATCH_SIZE)
-
-    for size in model.sizes:
-        print(f'Train model for size {size}')
-        dataloader = data.next_loader()
-        model.grow_gan(n_batches=len(dataloader))
-        trainer.fit(model, train_dataloader=dataloader)
+    print(STEPS)
+    for stage, scale, size in STEPS:
+        train(trainer, model, stage, scale, size, args)
 
 
 if __name__ == '__main__':

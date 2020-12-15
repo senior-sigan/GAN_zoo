@@ -4,10 +4,10 @@ from typing import List, Tuple
 import numpy as np
 import pytorch_lightning as pl
 import torch
-from torch.nn import functional as F
 from torch.optim import Adam
 from torch.optim.optimizer import Optimizer
 
+from gans_zoo.pggan.loss_criterion import wgangp
 from gans_zoo.pggan.network import Discriminator, Generator
 from gans_zoo.utils import norm_zero_one
 
@@ -19,6 +19,7 @@ class LitPGGAN(pl.LightningModule):
     ) -> ArgumentParser:
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
         parser.add_argument('--latent-dim', type=int, default=512)
+        parser.add_argument('--learning_rate', type=float, default=0.001)
         parser.add_argument('--nc', type=int, default=3,
                             help='number of colors in image')
         return parser
@@ -27,6 +28,9 @@ class LitPGGAN(pl.LightningModule):
         self,
         latent_dim: int = 512,
         depth_scale_0: int = 512,
+        learning_rate: float = 0.001,
+        beta1: float = 0,
+        beta2: float = 0.99,
         nc: int = 3,
     ):
         super().__init__()
@@ -43,40 +47,25 @@ class LitPGGAN(pl.LightningModule):
             nc=nc,
         )
 
-        self.real_label = 1.0
-        self.fake_label = 0.0
-
         self.alphas = np.zeros(1)
-        self.iteration = 0
-        self.depth = 0
-        self.sizes = [8, 16, 32, 64, 128, 256, 512, 1024]
-        self.scales = [512, 512, 512, 256, 128, 64, 32, 16]
+        self.img_size = 4
 
         self.input_size = latent_dim
 
     @property
     def img_dim(self) -> Tuple[int, int, int]:
-        size = self.sizes[self.depth]
-        return 3, size, size
+        return 3, self.img_size, self.img_size
 
-    def grow_gan(self, n_batches: int):
-        print(f"Grow GAN. n_batches={n_batches}")
-        if self.iteration % 2 == 0:
-            print("Stabilisation stage.")
-            # stabilisation iteration
+    def grow(self, stage: str, scale: int, size: int, n_batches: int):
+        self.img_size = size
+        if stage == 'stabilise':
             self.alphas = np.zeros(n_batches)
-        else:
-            print("Grow stage.")
-            # growing iteration
+        elif stage == 'grow':
             self.alphas = np.linspace(1, 0, num=n_batches)
-            self.generator.add_layer(self.scales[self.depth])
-            self.discriminator.add_layer(self.scales[self.depth])
-
-            self.depth += 1
-
+            self.generator.add_layer(scale)
+            self.discriminator.add_layer(scale)
         self.generator.alpha = self.alphas[0]
         self.discriminator.alpha = self.alphas[0]
-        self.iteration += 1
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -86,85 +75,58 @@ class LitPGGAN(pl.LightningModule):
         """
         return norm_zero_one(self.generator.forward(x))
 
-    def training_step(self, batch, batch_idx, optimizer_idx):
-        x = batch
+    def training_step(self, x_real, batch_idx, optimizer_idx):
         self.generator.alpha = self.alphas[batch_idx]
         self.discriminator.alpha = self.alphas[batch_idx]
 
+        z = torch.randn(
+            x_real.size(0),
+            self.hparams.latent_dim,
+            device=self.device,
+        )
+        x_fakes = self.generator(z)
+
         if optimizer_idx == 0:
-            return self.generator_step(x)
+            return self.generator_loss(x_fakes)
         elif optimizer_idx == 1:
-            return self.discriminator_step(x)
+            return self.discriminator_loss(x_real, x_fakes)
 
         msg = 'Expected optimizer_idx eq 0 or 1 but got {0}'
         raise AttributeError(msg.format(optimizer_idx))
 
-    def generator_step(self, x: torch.Tensor):
-        g_loss = self.generator_loss(x)
-        self.log('g_loss', g_loss, on_epoch=True, prog_bar=True)
-        return g_loss
-
-    def discriminator_step(self, x: torch.Tensor):
-        d_loss = self.discriminator_loss(x)
-        self.log('d_loss', d_loss, on_epoch=True, prog_bar=True)
-        return d_loss
-
     def configure_optimizers(self) -> Tuple[List[Optimizer], List]:
         lr = self.hparams.learning_rate
         beta1 = self.hparams.beta1
+        beta2 = self.hparams.beta2
 
         opt_g = Adam(
             self.generator.parameters(),
             lr=lr,
-            betas=(beta1, 0.999),
+            betas=(beta1, beta2),
         )
         opt_d = Adam(
             self.discriminator.parameters(),
             lr=lr,
-            betas=(beta1, 0.999),
+            betas=(beta1, beta2),
         )
 
         return [opt_g, opt_d], []
 
-    def generator_loss(self, x: torch.Tensor):
-        batch_size = x.size(0)
-        z = torch.randn(
-            batch_size,
-            *self.generator.input_shape,
-            device=self.device,
-        )
-        y = torch.full((batch_size,), self.real_label, device=self.device)
-        # For fake images discriminator should predict 0
-        # But here we train discriminator to cheat generator
-        # Thus we blame discriminator if it gets zeros from discriminator
+    def generator_loss(self, x_fake: torch.Tensor):
+        D_output = self.discriminator(x_fake)
+        g_loss = wgangp(D_output, True)
 
-        fakes = self.generator(z)
-
-        D_output = self.discriminator(fakes)
-        g_loss = F.binary_cross_entropy(D_output, y)
-
+        self.log('g_loss', g_loss, on_epoch=True, prog_bar=True)
         return g_loss
 
-    def discriminator_loss(self, x_real: torch.Tensor):
-        # train discriminator on real
-        batch_size = x_real.size(0)
-        y_real = torch.full((batch_size,), self.real_label, device=self.device)
-
+    def discriminator_loss(self, x_real: torch.Tensor, x_fake: torch.Tensor):
         D_output = self.discriminator(x_real)
-        D_real_loss = F.binary_cross_entropy(D_output, y_real)
-
-        # train discriminator on fake
-        z = torch.randn(
-            batch_size,
-            *self.generator.input_shape,
-            device=self.device,
-        )
-        x_fake = self.generator(z)
-        y_fake = torch.full((batch_size,), self.fake_label, device=self.device)
+        D_real_loss = wgangp(D_output, True)
 
         D_output = self.discriminator(x_fake)
-        D_fake_loss = F.binary_cross_entropy(D_output, y_fake)
+        D_fake_loss = wgangp(D_output, False)
 
         D_loss = D_real_loss + D_fake_loss
 
+        self.log('d_loss', D_loss, on_epoch=True, prog_bar=True)
         return D_loss
