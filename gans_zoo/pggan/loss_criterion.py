@@ -1,4 +1,7 @@
-def wgangp(prediction, is_real: bool):
+import torch
+
+
+def wgangp(prediction: torch.Tensor, is_real: bool) -> torch.Tensor:
     r"""
     Paper WGANGP loss : linear activation for the generator.
     https://arxiv.org/pdf/1704.00028.pdf

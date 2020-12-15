@@ -37,8 +37,7 @@ STAGES = ['grow', 'stabilise']
 STEPS = [
             (stage, scale, size)
             for scale, size in SCALE_SIZES
-            for stage in
-            STAGES
+            for stage in STAGES
         ][1:]
 
 
