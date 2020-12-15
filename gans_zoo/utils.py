@@ -1,6 +1,8 @@
 import io
+from typing import Optional, Tuple
 
 import torch
+from PIL.Image import Image
 from torchvision.transforms import functional as F
 
 
@@ -12,8 +14,13 @@ def norm_zero_one(tensor: torch.Tensor, epsilon: float = 1e-5) -> torch.Tensor:
     return tensor
 
 
-def tensor_to_file_like_object(tensor: torch.Tensor):
-    image = F.to_pil_image(tensor)
+def tensor_to_file_like_object(
+    tensor: torch.Tensor,
+    img_size: Optional[Tuple[int, int]] = None,
+):
+    image: Image = F.to_pil_image(tensor)
+    if img_size is not None:
+        image.resize(size=img_size)
     file = io.BytesIO()
     image.save(file, "JPEG")
     file.seek(0)

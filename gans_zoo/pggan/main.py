@@ -5,8 +5,10 @@ from pl_bolts.callbacks import LatentDimInterpolator, \
     TensorboardGenerativeModelImageSampler
 from torch.utils.data import DataLoader
 
+from gans_zoo.callbacks.gan_telegram import TelegramLoggerCallback
 from gans_zoo.pggan.data import build_dataset
 from gans_zoo.pggan.trainer import LitPGGAN
+from telegram_logger.logger import TelegramLogger
 
 IMG_SIZE_TO_BATCH_SIZE = {
     1024: 2,
@@ -46,6 +48,14 @@ def add_data_specific_args(parent_parser: ArgumentParser) -> ArgumentParser:
     parser.add_argument('--data-dir', type=str, required=True)
     parser.add_argument('--workers', type=int, default=8,
                         help='Number of Data Loader workers')
+    parser.add_argument(
+        '--tg-token', type=str, required=False,
+        help='Telegram bot token. Used to send epoch results to a chat',
+    )
+    parser.add_argument(
+        '--tg-chat-id', type=int, required=False,
+        help='Chat where to post epoch results',
+    )
     return parser
 
 
@@ -81,6 +91,12 @@ def main():
         TensorboardGenerativeModelImageSampler(),
         LatentDimInterpolator(interpolate_epoch_interval=5),
     ]
+    if args.tg_token is not None:
+        tg_logger = TelegramLogger(
+            token=args.tg_token,
+            chat_id=args.tg_chat_id,
+            module_name=__name__)
+        callbacks += [TelegramLoggerCallback(tg_logger)]
 
     trainer = pl.Trainer.from_argparse_args(args, callbacks=callbacks, )
 
