@@ -103,6 +103,7 @@ def main():
     print(STEPS)
     for stage, scale, size in STEPS:
         train(trainer, model, stage, scale, size, args)
+        trainer.max_epochs += args.max_epochs
 
 
 if __name__ == '__main__':

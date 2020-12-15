@@ -75,9 +75,15 @@ class LitPGGAN(pl.LightningModule):
         """
         return norm_zero_one(self.generator.forward(x))
 
+    def on_epoch_start(self) -> None:
+        self.log('img_size', self.img_size, on_epoch=True, prog_bar=True)
+
     def training_step(self, x_real, batch_idx, optimizer_idx):
-        self.generator.alpha = self.alphas[batch_idx]
-        self.discriminator.alpha = self.alphas[batch_idx]
+        alpha = self.alphas[batch_idx]
+        self.generator.alpha = alpha
+        self.discriminator.alpha = alpha
+
+        self.log('alpha', alpha, on_step=True, prog_bar=True)
 
         z = torch.randn(
             x_real.size(0),
