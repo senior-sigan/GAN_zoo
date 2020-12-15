@@ -11,15 +11,15 @@ from gans_zoo.pggan.trainer import LitPGGAN
 from telegram_logger.logger import TelegramLogger
 
 IMG_SIZE_TO_BATCH_SIZE = {
-    1024: 2,
+    1024: 1,
     512: 2,
-    256: 2,
-    128: 2,
-    64: 2,
-    32: 2,
-    16: 2,
-    8: 2,
-    4: 2,
+    256: 4,
+    128: 8,
+    64: 16,
+    32: 32,
+    16: 64,
+    8: 128,
+    4: 256,
 }
 
 SCALE_SIZES = [

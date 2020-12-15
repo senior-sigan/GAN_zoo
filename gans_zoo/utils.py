@@ -2,7 +2,7 @@ import io
 from typing import Optional, Tuple
 
 import torch
-from PIL.Image import Image
+from PIL.Image import NEAREST
 from torchvision.transforms import functional as F
 
 
@@ -18,9 +18,9 @@ def tensor_to_file_like_object(
     tensor: torch.Tensor,
     img_size: Optional[Tuple[int, int]] = None,
 ):
-    image: Image = F.to_pil_image(tensor)
+    image = F.to_pil_image(tensor)
     if img_size is not None:
-        image.resize(size=img_size)
+        image = image.resize(size=img_size, resample=NEAREST)
     file = io.BytesIO()
     image.save(file, "JPEG")
     file.seek(0)
