@@ -7,7 +7,7 @@ import torch
 from torch.optim import Adam
 from torch.optim.optimizer import Optimizer
 
-from gans_zoo.pggan.loss import gan_loss
+from gans_zoo.pggan.loss import gan_loss, mse_loss
 from gans_zoo.pggan.network import Discriminator, Generator
 from gans_zoo.utils import norm_zero_one
 
@@ -53,6 +53,8 @@ class LitPGGAN(pl.LightningModule):
         self.img_size = 4
 
         self.input_size = latent_dim
+
+        self.loss = mse_loss
 
     @property
     def img_dim(self) -> Tuple[int, int, int]:
@@ -127,17 +129,17 @@ class LitPGGAN(pl.LightningModule):
 
     def generator_loss(self, x_fake: torch.Tensor):
         D_output = self.discriminator(x_fake)
-        g_loss = gan_loss(D_output, True)
+        g_loss = self.loss(D_output, True)
 
         self.log('g_loss', g_loss, on_epoch=True, prog_bar=True)
         return g_loss
 
     def discriminator_loss(self, x_real: torch.Tensor, x_fake: torch.Tensor):
         D_output = self.discriminator(x_real)
-        D_real_loss = gan_loss(D_output, True)
+        D_real_loss = self.loss(D_output, True)
 
         D_output = self.discriminator(x_fake)
-        D_fake_loss = gan_loss(D_output, False)
+        D_fake_loss = self.loss(D_output, False)
 
         D_loss = D_real_loss + D_fake_loss
 

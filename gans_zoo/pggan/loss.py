@@ -2,6 +2,17 @@ import torch
 import torch.nn.functional as F
 
 
+def _build_reference(logits: torch.Tensor, is_real: bool) -> torch.Tensor:
+    batch_size = logits.size()[0]
+    value = int(is_real)
+
+    return torch.tensor(
+        [value],
+        dtype=torch.float,
+        device=logits.device,
+    ).expand(batch_size)
+
+
 def wasserstein_loss(prediction: torch.Tensor, is_real: bool) -> torch.Tensor:
     r"""
     Wasserstein loss.
@@ -13,14 +24,12 @@ def wasserstein_loss(prediction: torch.Tensor, is_real: bool) -> torch.Tensor:
 
 
 def gan_loss(logits: torch.Tensor, is_real: bool) -> torch.Tensor:
-    batch_size = logits.size()[0]
-    value = int(is_real)
-
-    reference = torch.tensor(
-        [value],
-        dtype=torch.float,
-        device=logits.device,
-    ).expand(batch_size)
+    reference = _build_reference(logits, is_real)
 
     preds = torch.sigmoid(logits).view(-1)
     return F.binary_cross_entropy(preds, reference)
+
+
+def mse_loss(logits: torch.Tensor, is_real: bool) -> torch.Tensor:
+    reference = _build_reference(logits, is_real)
+    return F.mse_loss(logits, reference)
