@@ -47,6 +47,7 @@ class LitPGGAN(pl.LightningModule):
             nc=nc,
         )
 
+        self.epoch_offset = 0
         self.n_batches = 0
         self.alphas = np.zeros(0)
         self.img_size = 4
@@ -63,11 +64,12 @@ class LitPGGAN(pl.LightningModule):
     ):
         self.img_size = size
         self.n_batches = n_batches
+        self.epoch_offset += n_epochs
 
         if stage == 'stabilise':
             self.alphas = np.zeros(n_epochs * n_batches)
         elif stage == 'grow':
-            self.alphas = np.linspace(1, 0, n_epochs * n_batches + 1)
+            self.alphas = np.linspace(1, 0, n_epochs * n_batches)
             self.generator.add_layer(scale)
             self.discriminator.add_layer(scale)
 
@@ -80,7 +82,9 @@ class LitPGGAN(pl.LightningModule):
         return norm_zero_one(self.generator.forward(x))
 
     def training_step(self, x_real, batch_idx, optimizer_idx):
-        idx = batch_idx + self.current_epoch * self.n_batches
+        idx = batch_idx + (
+            self.current_epoch - self.epoch_offset
+        ) * self.n_batches
         alpha = self.alphas[idx]
         self.generator.alpha = alpha
         self.discriminator.alpha = alpha
