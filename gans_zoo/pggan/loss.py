@@ -32,4 +32,4 @@ def gan_loss(logits: torch.Tensor, is_real: bool) -> torch.Tensor:
 
 def mse_loss(logits: torch.Tensor, is_real: bool) -> torch.Tensor:
     reference = _build_reference(logits, is_real)
-    return F.mse_loss(logits, reference)
+    return F.mse_loss(logits.view(-1), reference)
