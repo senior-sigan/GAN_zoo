@@ -76,7 +76,7 @@ def train(trainer, model, stage, scale, size, args):
 
     model.grow(
         stage, scale, size,
-        n_steps=len(dataloader),
+        n_batches=len(dataloader),
         n_epochs=args.max_epochs,
     )
     trainer.fit(model, train_dataloader=dataloader)
