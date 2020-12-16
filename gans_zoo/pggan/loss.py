@@ -22,5 +22,5 @@ def gan_loss(logits: torch.Tensor, is_real: bool) -> torch.Tensor:
         device=logits.device,
     ).expand(batch_size)
 
-    preds = F.sigmoid(logits)
+    preds = torch.sigmoid(logits).view(-1)
     return F.binary_cross_entropy(preds, reference)
