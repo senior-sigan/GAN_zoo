@@ -47,8 +47,8 @@ class LitPGGAN(pl.LightningModule):
             nc=nc,
         )
 
-        self.alpha = 0.0
-        self.alpha_step = 0.0
+        self.n_batches = 0
+        self.alphas = np.zeros(0)
         self.img_size = 4
 
         self.input_size = latent_dim
@@ -57,14 +57,17 @@ class LitPGGAN(pl.LightningModule):
     def img_dim(self) -> Tuple[int, int, int]:
         return 3, self.img_size, self.img_size
 
-    def grow(self, stage: str, scale: int, size: int, n_steps: int):
+    def grow(
+        self, stage: str, scale: int, size: int, n_batches: int,
+        n_epochs: int,
+    ):
         self.img_size = size
+        self.n_batches = n_batches
+
         if stage == 'stabilise':
-            self.alpha_step = 0.0
-            self.alpha = 0.0
+            self.alphas = np.zeros(n_epochs * n_batches)
         elif stage == 'grow':
-            self.alpha = 1.0
-            self.alpha_step = 1.0 / n_steps
+            self.alphas = np.linspace(1, 0, n_epochs * n_batches)
             self.generator.add_layer(scale)
             self.discriminator.add_layer(scale)
 
@@ -77,13 +80,13 @@ class LitPGGAN(pl.LightningModule):
         return norm_zero_one(self.generator.forward(x))
 
     def training_step(self, x_real, batch_idx, optimizer_idx):
-        self.generator.alpha = self.alpha
-        self.discriminator.alpha = self.alpha
+        idx = batch_idx + self.current_epoch * self.n_batches
+        alpha = self.alphas[idx]
+        self.generator.alpha = alpha
+        self.discriminator.alpha = alpha
 
-        self.log('alpha', self.alpha, on_step=True, prog_bar=True)
+        self.log('alpha', alpha, on_step=True, prog_bar=True)
         self.log('img_size', self.img_size, on_step=True, prog_bar=True)
-
-        self.alpha = np.clip(self.alpha - self.alpha_step, 0, 1)
 
         z = torch.randn(
             x_real.size(0),

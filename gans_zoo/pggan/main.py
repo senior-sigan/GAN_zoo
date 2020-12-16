@@ -67,7 +67,6 @@ def train(trainer, model, stage, scale, size, args):
         shuffle=True,
         num_workers=args.workers,
     )
-    n_steps = len(dataloader) * args.max_epochs / trainer.num_gpus
 
     print()
     print('-' * 80)
@@ -75,7 +74,11 @@ def train(trainer, model, stage, scale, size, args):
     print('-' * 80)
     print()
 
-    model.grow(stage, scale, size, n_steps=n_steps)
+    model.grow(
+        stage, scale, size,
+        n_steps=len(dataloader),
+        n_epochs=args.max_epochs,
+    )
     trainer.fit(model, train_dataloader=dataloader)
 
 
