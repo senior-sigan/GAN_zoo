@@ -67,7 +67,7 @@ class LitPGGAN(pl.LightningModule):
         if stage == 'stabilise':
             self.alphas = np.zeros(n_epochs * n_batches)
         elif stage == 'grow':
-            self.alphas = np.linspace(1, 0, n_epochs * n_batches)
+            self.alphas = np.linspace(1, 0, n_epochs * n_batches + 1)
             self.generator.add_layer(scale)
             self.discriminator.add_layer(scale)
 

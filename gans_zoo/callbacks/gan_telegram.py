@@ -38,6 +38,6 @@ class TelegramLoggerCallback(pl.Callback):
             pl_module.train()
 
         grid = torchvision.utils.make_grid(images, nrow=self.nrows)
-        str_title = f'{pl_module.__class__.__name__}_images'
+        str_title = f'{pl_module.__class__.__name__}_images_{trainer.current_epoch}'
         image_file = tensor_to_file_like_object(grid, img_size=self.image_size)
         self.tg_logger.write_image(image_file, caption=str_title)
