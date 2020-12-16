@@ -60,12 +60,6 @@ def add_data_specific_args(parent_parser: ArgumentParser) -> ArgumentParser:
 
 
 def train(trainer, model, stage, scale, size, args):
-    print()
-    print('-' * 80)
-    print(f'Stage {stage}. Image size {size}. Scale {scale}')
-    print('-' * 80)
-    print()
-
     dataset = build_dataset(args.data_dir, size)
     dataloader = DataLoader(
         dataset,
@@ -73,7 +67,15 @@ def train(trainer, model, stage, scale, size, args):
         shuffle=True,
         num_workers=args.workers,
     )
-    model.grow(stage, scale, size, n_batches=len(dataloader))
+    n_steps = len(dataloader) * args.max_epochs / trainer.num_gpus
+
+    print()
+    print('-' * 80)
+    print(f'Stage {stage}. Image size {size}. Scale {scale}')
+    print('-' * 80)
+    print()
+
+    model.grow(stage, scale, size, n_steps=n_steps)
     trainer.fit(model, train_dataloader=dataloader)
 
 
