@@ -80,6 +80,7 @@ def train(trainer, model, stage, scale, size, args):
         n_epochs=args.max_epochs,
     )
     trainer.fit(model, train_dataloader=dataloader)
+    trainer.current_epoch += 1  # in torch next fit starts on the previous epoch
 
 
 def main():
