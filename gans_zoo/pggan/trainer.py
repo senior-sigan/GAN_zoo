@@ -7,7 +7,7 @@ import torch
 from torch.optim import Adam
 from torch.optim.optimizer import Optimizer
 
-from gans_zoo.pggan.loss_criterion import wgangp
+from gans_zoo.pggan.loss import wasserstein_loss
 from gans_zoo.pggan.network import Discriminator, Generator
 from gans_zoo.utils import norm_zero_one
 
@@ -64,8 +64,6 @@ class LitPGGAN(pl.LightningModule):
             self.alphas = np.linspace(1, 0, num=n_batches)
             self.generator.add_layer(scale)
             self.discriminator.add_layer(scale)
-        self.generator.alpha = self.alphas[0]
-        self.discriminator.alpha = self.alphas[0]
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -75,15 +73,13 @@ class LitPGGAN(pl.LightningModule):
         """
         return norm_zero_one(self.generator.forward(x))
 
-    def on_epoch_start(self) -> None:
-        self.log('img_size', self.img_size, on_epoch=True, prog_bar=True)
-
     def training_step(self, x_real, batch_idx, optimizer_idx):
         alpha = self.alphas[batch_idx]
         self.generator.alpha = alpha
         self.discriminator.alpha = alpha
 
         self.log('alpha', alpha, on_step=True, prog_bar=True)
+        self.log('img_size', self.img_size, on_step=True, prog_bar=True)
 
         z = torch.randn(
             x_real.size(0),
@@ -120,17 +116,17 @@ class LitPGGAN(pl.LightningModule):
 
     def generator_loss(self, x_fake: torch.Tensor):
         D_output = self.discriminator(x_fake)
-        g_loss = wgangp(D_output, True)
+        g_loss = wasserstein_loss(D_output, True)
 
         self.log('g_loss', g_loss, on_epoch=True, prog_bar=True)
         return g_loss
 
     def discriminator_loss(self, x_real: torch.Tensor, x_fake: torch.Tensor):
         D_output = self.discriminator(x_real)
-        D_real_loss = wgangp(D_output, True)
+        D_real_loss = wasserstein_loss(D_output, True)
 
         D_output = self.discriminator(x_fake)
-        D_fake_loss = wgangp(D_output, False)
+        D_fake_loss = wasserstein_loss(D_output, False)
 
         D_loss = D_real_loss + D_fake_loss
 
