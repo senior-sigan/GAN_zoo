@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 def _build_reference(logits: torch.Tensor, is_real: bool) -> torch.Tensor:
     batch_size = logits.size()[0]
-    value = int(is_real)
+    value = 1.0 if is_real else 0.0
 
     return torch.tensor(
         [value],

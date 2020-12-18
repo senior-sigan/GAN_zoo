@@ -9,9 +9,10 @@ def build_dataset(root: str, image_size: int):
         transforms.Resize(int(image_size * 1.3)),
     ])
     transform = transforms.Compose([
-        transforms.RandomRotation(degrees=180),
+        transforms.RandomRotation(degrees=10),
         transforms.RandomCrop(image_size),
-        transforms.RandomVerticalFlip(),
+        transforms.RandomHorizontalFlip(),
+        transforms.ColorJitter(brightness=0.1, contrast=0.1, hue=0.1),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     ])

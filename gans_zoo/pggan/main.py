@@ -34,6 +34,18 @@ SCALE_SIZES = [
     (16, 1024),
 ]
 
+IMG_SIZE_TO_EPOCHS = {
+    1024: 100,
+    512: 100,
+    256: 100,
+    128: 250,
+    64: 250,
+    32: 300,
+    16: 300,
+    8: 500,
+    4: 500,
+}
+
 STAGES = ['grow', 'stabilise']
 
 STEPS = [
@@ -107,9 +119,10 @@ def main():
     trainer = pl.Trainer.from_argparse_args(args, callbacks=callbacks, )
 
     print(STEPS)
+    trainer.max_epochs = 0
     for stage, scale, size in STEPS:
+        trainer.max_epochs += IMG_SIZE_TO_EPOCHS[size]
         train(trainer, model, stage, scale, size, args)
-        trainer.max_epochs += args.max_epochs
 
 
 if __name__ == '__main__':
