@@ -40,10 +40,10 @@ IMG_SIZE_TO_EPOCHS = {
     256: 100,
     128: 250,
     64: 250,
-    32: 300,
-    16: 300,
-    8: 500,
-    4: 500,
+    32: 500,
+    16: 500,
+    8: 250,
+    4: 250,
 }
 
 STAGES = ['grow', 'stabilise']
@@ -71,7 +71,11 @@ def add_data_specific_args(parent_parser: ArgumentParser) -> ArgumentParser:
     return parser
 
 
-def train(trainer, model, stage, scale, size, args):
+def train(
+    trainer: pl.Trainer,
+    model: LitPGGAN,
+    stage: str, scale: int, size: int, args,
+):
     dataset = build_dataset(args.data_dir, size)
     dataloader = DataLoader(
         dataset,
@@ -82,15 +86,20 @@ def train(trainer, model, stage, scale, size, args):
 
     print()
     print('-' * 80)
-    print(f'Stage {stage}. Image size {size}. Scale {scale}')
+    print(
+        f'Stage {stage}. Image size {size}. Scale {scale}. '
+        f'Epochs {IMG_SIZE_TO_EPOCHS[size]}'
+    )
     print('-' * 80)
     print()
 
     model.grow(
         stage, scale, size,
         n_batches=len(dataloader),
-        n_epochs=args.max_epochs,
+        n_epochs=IMG_SIZE_TO_EPOCHS[size],
     )
+
+    trainer.max_epochs += IMG_SIZE_TO_EPOCHS[size]
     trainer.fit(model, train_dataloader=dataloader)
     trainer.current_epoch += 1  # in torch next fit starts on the previous epoch
 
@@ -121,7 +130,6 @@ def main():
     print(STEPS)
     trainer.max_epochs = 0
     for stage, scale, size in STEPS:
-        trainer.max_epochs += IMG_SIZE_TO_EPOCHS[size]
         train(trainer, model, stage, scale, size, args)
 
 
