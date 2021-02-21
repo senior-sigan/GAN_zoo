@@ -19,16 +19,20 @@ class Generator(nn.Module):
         self.nz = nz
         self.nc = nc
         self.scale_depths = [depth_scale_0]
-        self.scale_layers: List[nn.Module] = [EqualizedConv2d(
-            in_channels=self.scale_depths[0],
-            out_channels=self.scale_depths[0],
-            kernel_size=3,
-            padding=1,
-        )]
+        self.scale_layers = nn.ModuleList([
+            EqualizedConv2d(
+                in_channels=self.scale_depths[0],
+                out_channels=self.scale_depths[0],
+                kernel_size=3,
+                padding=1,
+            ),
+        ])
 
         # could be a stack with empty bottom and capacity = 2
         # because we always need only 2 or 1 to_rgb layers
-        self.to_rgb = [self._to_rgb_block(self.scale_depths[0])]
+        self.to_rgb = nn.ModuleList([
+            self._to_rgb_block(self.scale_depths[0]),
+        ])
 
         self.z_to_image = nn.Sequential(
             EqualizedLinear(
@@ -150,8 +154,7 @@ class Discriminator(nn.Module):
     ):
         super().__init__()
         self.nc = nc
-        self.depth_scale_0 = depth_scale_0
-        self.scale_depths = [depth_scale_0]
+        self.scale_depths: List[int] = [depth_scale_0]
         self.alpha = 0
 
         self.lrely = nn.LeakyReLU(0.2)
@@ -173,10 +176,10 @@ class Discriminator(nn.Module):
                 out_features=1,
             ),
         )
-        self.scale_layers: List[nn.Module] = []
-        self.from_rgb: List[nn.Module] = [self._from_rgb_block(
-            out_channels=self.scale_depths[0],
-        )]
+        self.scale_layers = nn.ModuleList()
+        self.from_rgb = nn.ModuleList([
+            self._from_rgb_block(out_channels=self.scale_depths[0]),
+        ])
 
     def add_layer(self, next_depth):
         prev_depth = self.scale_depths[0]
@@ -192,7 +195,7 @@ class Discriminator(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self._blend_layers(x)
-        for i, layer in enumerate(self.scale_layers[1:]):
+        for layer in self.scale_layers[1:]:
             x = layer(x)
 
         x = minibatch_stddev_layer(x)
